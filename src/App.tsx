@@ -230,8 +230,21 @@ export default function App() {
         'Carrossel para Story - 9:16': '9:16'
       };
 
-      // const ai = getAI();
-      // ...
+      const prompt = `Crie um Ecossistema de Vendas Master para:
+Negócio: ${negocio}
+Ideia Central: ${ideia}
+Público-alvo: ${publico}
+Estilo de Comunicação: ${estilo}
+Formates Solicitados: ${formatos.join(', ')}
+Número de Slides no Carrossel: ${slidesCarrossel}
+
+Gere o seguinte conteúdo estruturado exatamente assim:
+1. Uma estratégia de copy de elite para cada formato solicitado.
+2. Para cada asset de imagem, use o formato: [ASSET: Tipo do Asset - Slide X | PROMPT: Descrição detalhada para Midjourney/DALL-E em inglês, fotorealista, cinematográfico]
+3. Para o vídeo, use o formato: [VIDEO_PROMPT: Descrição cinematográfica detalhada do vídeo em inglês]
+4. Para a narração, use o formato: [NARRATION_SCRIPT: Texto persuasivo para locução em português]
+
+IMPORTANTE: O texto deve ser focado em conversão e autoridade máxima.`;
 
       // 1. Generate Strategy Text & Video Prompts (Now via Server)
       const textResponse = await fetch('/api/ai/generate-text', {
