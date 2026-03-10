@@ -40,6 +40,15 @@ function cn(...inputs: ClassValue[]) {
 }
 
 // --- Types ---
+declare global {
+  interface Window {
+    aistudio?: {
+      hasSelectedApiKey: () => boolean;
+      openSelectKey: () => Promise<void>;
+    };
+  }
+}
+
 interface User {
   id: number;
   email: string;
@@ -102,6 +111,7 @@ export default function App() {
   const [status, setStatus] = useState<string>('');
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [videoAspectRatio, setVideoAspectRatio] = useState<'16:9' | '9:16'>('16:9');
 
   useEffect(() => {
     checkAuth();
@@ -402,26 +412,22 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
   const generateVideoAsset = async () => {
     if (!result?.videoPrompt) return;
 
+    // Verificação de API Key para ambiente Veo no AI Studio
+    if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+      if (!window.aistudio.hasSelectedApiKey()) {
+        await window.aistudio.openSelectKey();
+        return;
+      }
+    }
+
     setVideoLoading(true);
     setVideoError(null);
     setVideoProgress(5);
-    setStatus('Iniciando geração de vídeo cinematográfico...');
-
-    // Progress simulation - Adaptive for up to 5 minutes
-    const progressInterval = setInterval(() => {
-      setVideoProgress(prev => {
-        if (prev >= 98) return prev;
-        // Slower increments to last longer (targeting ~3-5 mins total)
-        const increment = prev < 30 ? 0.8 : (prev < 60 ? 0.5 : (prev < 90 ? 0.2 : 0.1));
-        return Math.min(98, parseFloat((prev + increment).toFixed(1)));
-      });
-    }, 2000);
+    setStatus('Iniciando operação assíncrona...');
 
     try {
-      // Veo only supports 16:9 and 9:16.
-      const videoAspectRatio = result.assets[0]?.aspectRatio === '1:1' ? '16:9' : (result.assets[0]?.aspectRatio || '16:9');
-
-      const resp = await fetch('/api/ai/generate-video', {
+      // 1. Inicia a Geração no Backend
+      const startResp = await fetch('/api/ai/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -430,26 +436,54 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
         })
       });
 
-      if (!resp.ok) {
-        let errMessage = `Erro de servidor (${resp.status})`;
-        try {
-          const errData = await resp.json();
-          errMessage = errData.error || errMessage;
-        } catch (e) { /* ignore */ }
-        throw new Error(errMessage);
+      if (!startResp.ok) {
+        const errData = await startResp.json();
+        throw new Error(errData.error || `Erro ao iniciar (${startResp.status})`);
       }
 
-      const data = await resp.json();
-      if (data.data) {
-        setVideoProgress(100);
-        setGeneratedVideo(`data:video/mp4;base64,${data.data}`);
-        setStatus('Vídeo gerado com sucesso!');
+      const { operationName } = await startResp.json();
+      setStatus('Renderizando vídeo cinematográfico (Veo 3.1)...');
+
+      // 2. Loop de Polling (Consulta a cada 5 segundos)
+      let isDone = false;
+      let attempts = 0;
+      const maxAttempts = 60; // Limite de 5 minutos
+
+      while (!isDone && attempts < maxAttempts) {
+        attempts++;
+        await new Promise(r => setTimeout(r, 5000));
+
+        // Progresso visual fluido
+        setVideoProgress(prev => {
+          if (prev >= 98) return prev;
+          const inc = prev < 50 ? 5 : (prev < 80 ? 2 : 0.5);
+          return Math.min(98, prev + inc);
+        });
+
+        const statusResp = await fetch(`/api/ai/operation-status/${operationName}`);
+        if (!statusResp.ok) continue;
+
+        const statusData = await statusResp.json();
+
+        if (statusData.done) {
+          isDone = true;
+          if (statusData.videoUri) {
+            setVideoProgress(100);
+            // Define o vídeo usando o endpoint de proxy para estabilidade e CORS
+            setGeneratedVideo(`/api/ai/video-proxy?url=${encodeURIComponent(statusData.videoUri)}`);
+            setStatus('Vídeo gerado com sucesso!');
+          } else if (statusData.error) {
+            throw new Error(`IA Error: ${statusData.error.message || 'Falha na renderização'}`);
+          }
+        }
       }
+
+      if (!isDone) throw new Error("Tempo limite esgotado. Verifique o console da IA.");
+
     } catch (err: any) {
       console.error("Video Generation Error:", err);
-      setVideoError(err.message || 'Erro desconhecido ao gerar vídeo');
+      setVideoError(err.message || 'Erro desconhecido ao processar o vídeo');
     } finally {
-      clearInterval(progressInterval);
       setVideoLoading(false);
     }
   };
@@ -1339,6 +1373,37 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
                             <p className="text-sm text-white/60 leading-relaxed italic">
                               "{result.videoPrompt}"
                             </p>
+
+                            {/* Seletor de Formato (Aspect Ratio) */}
+                            <div className="flex flex-col gap-3 py-2">
+                              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f58f2a]">Formato do Vídeo</span>
+                              <div className="flex items-center gap-4">
+                                <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                                  <button
+                                    onClick={() => setVideoAspectRatio('16:9')}
+                                    className={cn(
+                                      "px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
+                                      videoAspectRatio === '16:9' ? "bg-white text-[#0c2444] shadow-lg" : "text-white/40 hover:text-white"
+                                    )}
+                                  >
+                                    Horizontal (16:9)
+                                  </button>
+                                  <button
+                                    onClick={() => setVideoAspectRatio('9:16')}
+                                    className={cn(
+                                      "px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
+                                      videoAspectRatio === '9:16' ? "bg-white text-[#0c2444] shadow-lg" : "text-white/40 hover:text-white"
+                                    )}
+                                  >
+                                    Vertical (9:16)
+                                  </button>
+                                </div>
+                                <span className="text-[10px] text-white/20 uppercase tracking-widest">
+                                  {videoAspectRatio === '16:9' ? 'Ideal para VSL & YouTube' : 'Ideal para Reels & TikTok Ads'}
+                                </span>
+                              </div>
+                            </div>
+
                             {!generatedVideo ? (
                               <div className="space-y-6">
                                 <button
