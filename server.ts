@@ -344,17 +344,20 @@ async function startServer() {
     const { prompt, model, aspectRatio } = req.body;
     try {
       if (!prompt) throw new Error("Prompt is required");
-      const targetModel = model || 'veo-3.1-fast-generate-preview';
+      const targetModel = model || 'veo-3.1-generate-preview';
       console.log(`[AI] Generating video with model: ${targetModel}`);
+
+      // Enhance prompt with professional/corporate requirements as per user demand
+      const professionalPrompt = `${prompt}. MANDATORY REQUIREMENTS: The video must be professional, corporate, and high-end. If there is any voiceover or audio integration, it MUST use perfect Brazilian Portuguese (PT-BR) with a professional business tone, correct intonation, and no artifacts/bizarreness. This is for an elite corporate environment. Length: 8 seconds.`;
 
       let operation: any = await (genAI.models as any).generateVideos({
         model: targetModel,
-        prompt: prompt,
+        prompt: professionalPrompt,
         config: {
           numberOfVideos: 1,
           resolution: '720p',
           aspectRatio: aspectRatio || '16:9',
-          durationSeconds: 10
+          durationSeconds: 8
         }
       });
 
@@ -480,7 +483,7 @@ async function startServer() {
   });
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 MASTER FUNNEL ON: http://0.0.0.0:${PORT}`);
+    console.log(`🚀 MASTER FUNIL ON: http://0.0.0.0:${PORT}`);
     console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
   });
 }
