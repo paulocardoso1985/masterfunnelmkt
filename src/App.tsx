@@ -5,7 +5,6 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { GoogleGenAI, Modality } from "@google/genai";
 import Markdown from 'react-markdown';
 import {
   Rocket,
@@ -203,11 +202,8 @@ export default function App() {
     }
   };
 
-  // Helper to get AI instance
-  const getAI = () => {
-    const key = (process.env as any).API_KEY || process.env.GEMINI_API_KEY || '';
-    return new GoogleGenAI({ apiKey: key });
-  };
+  // Helper to get AI instance (DEPRECATED - Moved to server)
+  // const getAI = () => { ... };
 
   const generateStrategy = async () => {
     const { negocio, ideia, publico, estilo, formatos, slidesCarrossel } = formData;
@@ -226,17 +222,6 @@ export default function App() {
     const textModel = "gemini-3.1-pro-preview";
     try {
       // Log usage
-      fetch('/api/log-usage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'GERAR_ESTRATEGIA',
-          params: { negocio, ideia, formatos }
-        })
-      });
-
-      const ai = getAI();
-
       const aspectRatioMap: Record<string, "1:1" | "9:16" | "16:9"> = {
         'Feed (Instagram/LinkedIn) - 1:1': '1:1',
         'Stories/Reels/TikTok - 9:16': '9:16',
@@ -245,58 +230,27 @@ export default function App() {
         'Carrossel para Story - 9:16': '9:16'
       };
 
-      // 1. Generate Strategy Text & Video Prompts
-      const prompt = `Aja como o Diretor de Criação e Estratégia de Elite da MASTER FUNNEL MARKETING MAIS CORPORATIVO. 
-      Crie um ecossistema de marketing digital de alta performance para "${negocio}".
-      
-      ${formatos.some(f => f.includes('Carrossel')) ? `- Slides por Carrossel: ${slidesCarrossel}` : ''}
+      // const ai = getAI();
+      // ...
 
-      REQUISITOS OBRIGATÓRIOS DE QUALIDADE:
-      1. IDIOMA E LÍNGUA: Todo o áudio, narração, diálogos e textos (inclusive textos em imagens/vídeos) devem ser exclusivamente em PORTUGUÊS DO BRASIL (PT-BR) com ortografia impecável.
-      2. CONTEXTO VISUAL NEUTRO: Os prompts visuais (Imagem e Vídeo) devem focar na MARCA e no PRODUTO. NÃO inclua elementos geográficos brasileiros (bandeiras, mapas, pontos turísticos) a menos que o negócio seja explicitamente sobre o Brasil. Queremos a LÍNGUA brasileira no áudio, não necessariamente o Brasil como cenário visual.
-      3. REVISÃO RIGOROSA: Erros de português (acentuação, concordância) são proibidos.
-      4. O tom deve ser extremamente profissional, persuasivo e focado em resultados de elite.
-
-      O relatório deve ser em Markdown e incluir:
-      # 🎯 Estratégia Master: ${negocio}
-      ## 1. Posicionamento de Elite e Proposta de Valor
-      ## 2. Arquitetura do Funil de Conversão (Topo, Meio e Fundo de Funil)
-      ## 3. Mix de Canais Estratégicos & Plano de Tráfego Pago
-      ## 4. Cronograma de Impacto (Plano de Ação de 30 dias)
-      ## 5. Roteiro de Narração Profissional (Para locução)
-      
-      No final, adicione uma seção "ASSETS_PROMPTS" com prompts para CADA formato solicitado.
-      
-      REGRAS PARA CARROSSÉIS:
-      - Se um carrossel foi solicitado, você deve gerar EXATAMENTE ${slidesCarrossel} prompts sequenciais.
-      - A sequência deve seguir: Slide 1 (Gancho/Hook), Slides 2 a ${slidesCarrossel - 1} (Conteúdo de Valor/Storytelling), Slide ${slidesCarrossel} (CTA de Elite).
-      - Cada slide do carrossel deve ser identificado EXATAMENTE como: [ASSET: Nome do Carrossel - Slide X (Indique a Proporção 1:1 ou 9:16 aqui) | PROMPT: ...]
-      
-      REGRAS PARA OUTROS FORMATOS:
-      - [ASSET: Nome do Formato (Indique a Proporção 1:1 ou 9:16 ou 16:9 aqui) | PROMPT: O prompt detalhado aqui descrevendo o visual focado na marca e no produto (descreva em inglês para melhor qualidade visual, mas especifique que qualquer texto na imagem deve ser em PORTUGUÊS DO BRASIL. NÃO inclua elementos visuais do Brasil como país/clima/cenário, foque no ambiente do negócio)].
-      
-      Também gere 1 roteiro técnico cinematográfico e detalhado para vídeo publicitário de exatos 10 segundos (ritmo elegante e fluido):
-      [VIDEO_PROMPT: ...]
-
-      E gere o texto exato para a narração profissional (deve ser lido em cerca de 8 a 10 segundos, foque totalmente na LÍNGUA e dicção brasileira):
-      [NARRATION_SCRIPT: O roteiro de áudio exclusivamente em Português do Brasil aqui, fluído, impactante e com ortografia correta]
-
-      DIRETRIZES PARA OS PROMPTS VISUAIS:
-      - Devem ser IMAGENS PUBLICITÁRIAS reais, com elementos de design, CTAs implícitos na composição e técnicas de produção de mídia.
-      - IMPORTANTE: Qualquer texto visível (placas, telas, letreiros, botões) DEVE estar em PORTUGUÊS DO BRASIL correto e legível. Verifique a ortografia das palavras propostas no prompt.
-      - Descreva iluminação cinematográfica, movimentos de câmera e alta fidelidade (8k, photorealistic).
-      - IMPORTANTE: Para o formato "Feed (Instagram/LinkedIn) - 1:1", o prompt deve focar em uma composição quadrada.
-      - IMPORTANTE: Para o formato "Stories/Reels/TikTok - 9:16", o prompt deve focar em uma composição vertical.`;
-
-      const textResponse = await ai.models.generateContent({
-        model: textModel,
-        contents: prompt,
-        config: {
-          systemInstruction: "Você é o Diretor de Criação da MASTER FUNNEL. Sua missão é entregar estratégias de marketing de elite, com português impecável (PT-BR), sem erros ortográficos, e tom extremamente profissional e persuasivo. Nunca use inglês no conteúdo final, exceto em termos técnicos de marketing amplamente aceitos no Brasil.",
-        }
+      // 1. Generate Strategy Text & Video Prompts (Now via Server)
+      const textResponse = await fetch('/api/ai/generate-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: prompt,
+          systemInstruction: "Você é o Diretor de Criação da MASTER FUNNEL. Sua missão é entregar estratégias de marketing de elite, com português impecável (PT-BR), sem erros ortográficos, e tom extremamente profissional e persuasivo.",
+          model: textModel
+        })
       });
 
-      const fullText = textResponse.text || '';
+      if (!textResponse.ok) {
+        const errData = await textResponse.json();
+        throw new Error(errData.error || `Erro de servidor (${textResponse.status})`);
+      }
+
+      const textData = await textResponse.json();
+      const fullText = textData.text || '';
 
       // 2. Extract Prompts
       setStatus('Extraindo prompts e gerando visuais...');
@@ -334,16 +288,18 @@ export default function App() {
         else ratio = aspectRatioMap[baseType] || '16:9';
 
         try {
-          const res = await ai.models.generateContent({
-            model: imageModel,
-            contents: { parts: [{ text: p }] },
-            config: { imageConfig: { aspectRatio: ratio } }
+          const res = await fetch('/api/ai/generate-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: p, aspectRatio: ratio, model: imageModel })
           });
 
-          const part = res.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-          if (part?.inlineData?.data) {
+          if (!res.ok) throw new Error(`Imagem falhou (${res.status})`);
+
+          const data = await res.json();
+          if (data.data) {
             generatedAssets.push({
-              url: `data:image/png;base64,${part.inlineData.data}`,
+              url: `data:image/png;base64,${data.data}`,
               tipo: baseType,
               label: fullLabel,
               aspectRatio: ratio
@@ -405,54 +361,34 @@ export default function App() {
   const generateVideoAsset = async () => {
     if (!result?.videoPrompt) return;
 
-    // Optional: Check for AI Studio API key if in that environment
-    const hasAiStudio = typeof window !== 'undefined' && (window as any).aistudio;
-    if (hasAiStudio && !(await (window as any).aistudio.hasSelectedApiKey())) {
-      await (window as any).aistudio.openSelectKey();
-      return;
-    }
-
     setVideoLoading(true);
     setStatus('Gerando vídeo cinematográfico (Veo 3.1)...');
 
     try {
-      const ai = getAI();
       // Veo only supports 16:9 and 9:16.
       const videoAspectRatio = result.assets[0]?.aspectRatio === '1:1' ? '16:9' : (result.assets[0]?.aspectRatio || '16:9');
 
-      let operation = await ai.models.generateVideos({
-        model: 'veo-3.1-fast-generate-preview',
-        prompt: result.videoPrompt,
-        config: {
-          numberOfVideos: 1,
-          resolution: '720p',
-          aspectRatio: videoAspectRatio,
-          durationSeconds: 8
-        }
+      const resp = await fetch('/api/ai/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: result.videoPrompt,
+          aspectRatio: videoAspectRatio
+        })
       });
 
-      while (!operation.done) {
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        operation = await ai.operations.getVideosOperation({ operation: operation });
+      if (!resp.ok) {
+        const errData = await resp.json();
+        throw new Error(errData.error || `Erro de servidor (${resp.status})`);
       }
 
-      const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-      if (downloadLink) {
-        const key = (process.env as any).API_KEY || process.env.GEMINI_API_KEY || '';
-        const videoRes = await fetch(downloadLink, {
-          headers: { 'x-goog-api-key': key }
-        });
-        if (!videoRes.ok) throw new Error(`Falha ao baixar vídeo: ${videoRes.statusText}`);
-        const blob = await videoRes.blob();
-        setGeneratedVideo(URL.createObjectURL(blob));
+      const data = await resp.json();
+      if (data.data) {
+        setGeneratedVideo(`data:video/mp4;base64,${data.data}`);
       }
     } catch (err: any) {
       console.error("Video Generation Error:", err);
-      if (err.message?.includes("Requested entity was not found")) {
-        setError("Sua chave de API pode não ter acesso ao Veo ou o modelo não foi encontrado. Verifique as permissões.");
-      } else {
-        setError(`Falha ao gerar vídeo: ${err.message || 'Erro desconhecido'}`);
-      }
+      setError(`Falha ao gerar vídeo: ${err.message || 'Erro desconhecido'}`);
     } finally {
       setVideoLoading(false);
       setStatus('');
@@ -466,26 +402,22 @@ export default function App() {
     setStatus('Gerando narração profissional em PT-BR...');
 
     try {
-      const ai = getAI();
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: result.narrationScript }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Aoede' },
-            },
-          },
-        },
+      const resp = await fetch('/api/ai/generate-audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: result.narrationScript })
       });
 
-      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (!resp.ok) {
+        const errData = await resp.json();
+        throw new Error(errData.error || `Erro de servidor (${resp.status})`);
+      }
 
-      if (base64Audio) {
-        setGeneratedAudio(`data:audio/wav;base64,${base64Audio}`);
+      const data = await resp.json();
+      if (data.data) {
+        setGeneratedAudio(`data:audio/wav;base64,${data.data}`);
       } else {
-        throw new Error("O modelo não retornou dados de áudio.");
+        throw new Error("O servidor não retornou dados de áudio.");
       }
     } catch (err: any) {
       console.error("Audio Generation Error:", err);

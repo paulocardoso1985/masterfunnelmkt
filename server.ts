@@ -7,6 +7,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import fs from "fs";
+import { GoogleGenAI } from "@google/genai";
+import "dotenv/config";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -89,6 +91,9 @@ seedAdmin();
 
 const JWT_SECRET = process.env.JWT_SECRET || "master-funnel-secret-2026";
 const PORT = Number(process.env.PORT) || 3000;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+
+const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 async function startServer() {
   const app = express();
@@ -283,6 +288,112 @@ async function startServer() {
     }
     db.prepare("DELETE FROM strategies WHERE id = ?").run(req.params.id);
     res.json({ success: true });
+  });
+
+  // --- AI Server Proxy Endpoints ---
+  app.post("/api/ai/generate-text", authenticate, async (req, res) => {
+    const { prompt, systemInstruction, model } = req.body;
+    try {
+      const result = await genAI.models.generateContent({
+        model: model || "gemini-3.1-pro-preview",
+        contents: prompt,
+        config: { systemInstruction }
+      });
+      res.json({ text: result.text });
+    } catch (err: any) {
+      console.error("AI Text Generation Error:", err);
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/ai/generate-image", authenticate, async (req, res) => {
+    const { prompt, aspectRatio, model } = req.body;
+    try {
+      const result = await genAI.models.generateContent({
+        model: model || "gemini-2.5-flash-image",
+        contents: { parts: [{ text: prompt }] },
+        config: { imageConfig: { aspectRatio } }
+      });
+
+      const part = result.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
+      if (part?.inlineData?.data) {
+        res.json({ data: part.inlineData.data });
+      } else {
+        res.status(500).json({ error: "Falha ao gerar imagem: Dado binário não encontrado." });
+      }
+    } catch (err: any) {
+      console.error("AI Image Generation Error:", err);
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/ai/generate-video", authenticate, async (req, res) => {
+    const { prompt, model, aspectRatio } = req.body;
+    try {
+      // Direct call using the project's SDK pattern
+      let operation: any = await (genAI.models as any).generateVideos({
+        model: model || 'veo-3.1-fast-generate-preview',
+        prompt: prompt,
+        config: {
+          numberOfVideos: 1,
+          resolution: '720p',
+          aspectRatio: aspectRatio || '16:9',
+          durationSeconds: 8
+        }
+      });
+
+      // Simple polling on the server to simplify for the client
+      let maxRetries = 20;
+      while (!operation.done && maxRetries > 0) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        operation = await (genAI.operations as any).getVideosOperation({ operation: operation });
+        maxRetries--;
+      }
+
+      const downloadLink = (operation as any).response?.generatedVideos?.[0]?.video?.uri;
+      if (downloadLink) {
+        const videoRes = await fetch(downloadLink, {
+          headers: { 'x-goog-api-key': GEMINI_API_KEY }
+        });
+        if (!videoRes.ok) throw new Error(`Falha ao baixar vídeo: ${videoRes.statusText}`);
+        const buffer = await videoRes.arrayBuffer();
+        const base64Video = Buffer.from(buffer).toString('base64');
+        res.json({ data: base64Video });
+      } else {
+        res.status(500).json({ error: "Falha ao gerar vídeo: URI não encontrada." });
+      }
+    } catch (err: any) {
+      console.error("AI Video Generation Error:", err);
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/ai/generate-audio", authenticate, async (req, res) => {
+    const { text, model } = req.body;
+    try {
+      const response: any = await (genAI.models as any).generateContent({
+        model: model || "gemini-2.5-flash-preview-tts",
+        contents: [{ parts: [{ text }] }],
+        config: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: 'Aoede' },
+            },
+          },
+        },
+      });
+
+      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (base64Audio) {
+        res.json({ data: base64Audio });
+      } else {
+        res.status(500).json({ error: "O modelo não retornou dados de áudio." });
+      }
+    } catch (err: any) {
+      console.error("AI Audio Generation Error:", err);
+      res.status(err.status || 500).json({ error: err.message });
+    }
   });
 
   // --- Vite Integration ---
