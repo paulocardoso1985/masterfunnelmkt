@@ -294,6 +294,7 @@ async function startServer() {
   app.post("/api/ai/generate-text", authenticate, async (req, res) => {
     const { prompt, systemInstruction, model } = req.body;
     try {
+      console.log(`[AI] Generating text with model: ${model || "gemini-3.1-pro-preview"}`);
       const result = await genAI.models.generateContent({
         model: model || "gemini-3.1-pro-preview",
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -309,6 +310,7 @@ async function startServer() {
   app.post("/api/ai/generate-image", authenticate, async (req, res) => {
     const { prompt, aspectRatio, model } = req.body;
     try {
+      console.log(`[AI] Generating image with model: ${model || "gemini-2.5-flash-image"}`);
       const result = await genAI.models.generateContent({
         model: model || "gemini-2.5-flash-image",
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
