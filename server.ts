@@ -73,7 +73,7 @@ db.exec(`
 const seedAdmin = () => {
   const adminEmail = "paulo.cardoso@maiscorporativo.tur.br";
   const adminExists = db.prepare("SELECT * FROM users WHERE email = ?").get(adminEmail);
-  
+
   if (!adminExists) {
     console.log("Seeding admin user...");
     db.prepare("INSERT INTO users (email, password, role, name) VALUES (?, ?, ?, ?)").run(
@@ -94,26 +94,34 @@ async function startServer() {
   const app = express();
   app.use(express.json());
   app.use(cookieParser());
-  
-  // Serve static files from public folder (fallback/dev)
-  app.use(express.static(path.join(__dirname, "public")));
-  
-  // Explicit routes for logos to ensure they are found
-  app.get("/logo.png", (req, res) => {
-    const p = path.join(__dirname, "public", "logo.png");
-    if (fs.existsSync(p)) return res.sendFile(p);
-    const d = path.join(__dirname, "dist", "logo.png");
-    if (fs.existsSync(d)) return res.sendFile(d);
-    res.status(404).send("Not found");
-  });
 
-  app.get("/Logo_Mais_Braco_orange.png", (req, res) => {
-    const p = path.join(__dirname, "public", "Logo_Mais_Braco_orange.png");
-    if (fs.existsSync(p)) return res.sendFile(p);
-    const d = path.join(__dirname, "dist", "Logo_Mais_Braco_orange.png");
-    if (fs.existsSync(d)) return res.sendFile(d);
-    res.status(404).send("Not found");
-  });
+  // Serve static files from public folder (fallback/dev)
+  const publicPath = path.join(__dirname, "public");
+  const distPath = path.join(__dirname, "dist");
+
+  app.use(express.static(publicPath));
+
+  // Explicit routes for logos with detailed logging
+  const serveLogo = (fileName: string) => (req: any, res: any) => {
+    const locations = [
+      path.join(publicPath, fileName),
+      path.join(distPath, fileName),
+      path.join(__dirname, fileName)
+    ];
+
+    for (const loc of locations) {
+      if (fs.existsSync(loc)) {
+        console.log(`[Static] Serving ${fileName} from ${loc}`);
+        return res.sendFile(loc);
+      }
+    }
+
+    console.warn(`[Static] CRITICAL: ${fileName} not found in any of these locations:`, locations);
+    res.status(404).send("Logo not found");
+  };
+
+  app.get("/logo.png", serveLogo("logo.png"));
+  app.get("/Logo_Mais_Braco_orange.png", serveLogo("Logo_Mais_Braco_orange.png"));
 
   // --- Auth Middleware ---
   const authenticate = (req: any, res: any, next: any) => {
@@ -132,7 +140,7 @@ async function startServer() {
   app.post("/api/login", (req, res) => {
     const { email, password } = req.body;
     const user: any = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
-    
+
     if (!user || !bcrypt.compareSync(password, user.password)) {
       return res.status(401).json({ error: "Credenciais inválidas" });
     }
@@ -269,7 +277,7 @@ async function startServer() {
   } else {
     console.log("Iniciando em modo PRODUÇÃO (Servindo pasta dist)");
     const distPath = path.join(__dirname, "dist");
-    
+
     if (fs.existsSync(distPath)) {
       app.use(express.static(distPath));
       app.get("*", (req, res) => {
