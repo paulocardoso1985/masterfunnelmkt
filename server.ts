@@ -106,7 +106,9 @@ async function startServer() {
     const locations = [
       path.join(publicPath, fileName),
       path.join(distPath, fileName),
-      path.join(__dirname, fileName)
+      path.join(__dirname, fileName),
+      path.join(process.cwd(), "public", fileName),
+      path.join(process.cwd(), fileName)
     ];
 
     for (const loc of locations) {
@@ -116,7 +118,7 @@ async function startServer() {
       }
     }
 
-    console.warn(`[Static] CRITICAL: ${fileName} not found in any of these locations:`, locations);
+    console.warn(`[Static] CRITICAL: ${fileName} not found. Searched:`, locations);
     res.status(404).send("Logo not found");
   };
 
@@ -135,6 +137,23 @@ async function startServer() {
       res.status(401).json({ error: "Sessão expirada" });
     }
   };
+
+  // Debug route to see files in the container
+  app.get("/api/admin/debug-files", authenticate, (req: any, res) => {
+    if (req.user.role !== "admin") return res.status(403).send("Forbidden");
+    try {
+      const getDir = (dir: string) => fs.existsSync(dir) ? fs.readdirSync(dir) : [];
+      res.json({
+        cwd: process.cwd(),
+        dirname: __dirname,
+        root: getDir(__dirname),
+        public: getDir(publicPath),
+        dist: getDir(distPath)
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 
   // --- Auth Routes ---
   app.post("/api/login", (req, res) => {

@@ -632,7 +632,6 @@ export default function App() {
                 src="/Logo_Mais_Braco_orange.png"
                 alt="Logo"
                 className="h-16 object-contain"
-                referrerPolicy="no-referrer"
               />
             </div>
             <h1 className="text-3xl font-bold tracking-tighter uppercase">MASTER FUNNEL</h1>
@@ -723,7 +722,6 @@ export default function App() {
             src="/logo.png"
             alt="Logo"
             className="w-full h-full object-contain"
-            referrerPolicy="no-referrer"
           />
         </div>
         <nav className="flex flex-col gap-6">
@@ -771,7 +769,6 @@ export default function App() {
             src="/Logo_Mais_Braco_orange.png"
             alt="Logo"
             className="h-10 object-contain"
-            referrerPolicy="no-referrer"
           />
           <div className="h-8 w-px bg-white/10 hidden sm:block" />
           <div className="flex flex-col">
