@@ -483,7 +483,7 @@ async function startServer() {
   });
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 MASTER FUNNEL ON: http://0.0.0.0:${PORT}`);
+    console.log(`🚀 MASTER FUNIL ON: http://0.0.0.0:${PORT}`);
     console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
   });
 }

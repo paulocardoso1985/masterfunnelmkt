@@ -230,7 +230,7 @@ export default function App() {
         'Carrossel para Story - 9:16': '9:16'
       };
 
-      const prompt = `Aja como o Diretor de Criação e Estratégia de Elite da MASTER FUNNEL MARKETING MAIS CORPORATIVO. 
+      const prompt = `Aja como o Diretor de Criação e Estratégia de Elite da MASTER FUNIL MARKETING MAIS CORPORATIVO. 
 Crie um ecossistema de marketing digital de ALTA PERFORMANCE e COMPLETAMENTE DETALHADO para "${negocio}".
 
 Ideia Central: ${ideia}
@@ -1381,7 +1381,7 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
                             <Rocket className="text-[#f58f2a]" size={28} />
                           </div>
                           <div>
-                            <p className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-40">MASTER FUNNEL</p>
+                            <p className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-40">MASTER FUNIL</p>
                             <p className="text-lg font-bold">MAIS MARKETING ENGINE</p>
                           </div>
                         </div>
@@ -1405,7 +1405,7 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
 
       <footer className="max-w-7xl mx-auto p-12 text-center border-t border-white/5">
         <p className="text-[10px] uppercase tracking-[0.5em] font-bold text-white/20">
-          © 2026 MASTER FUNNEL | MARKETING MAIS CORPORATIVO
+          © 2026 MASTER FUNIL | MARKETING MAIS CORPORATIVO
         </p>
       </footer>
     </div>
