@@ -407,13 +407,15 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
     setVideoProgress(5);
     setStatus('Iniciando geração de vídeo cinematográfico...');
 
-    // Progress simulation
+    // Progress simulation - Adaptive for up to 5 minutes
     const progressInterval = setInterval(() => {
       setVideoProgress(prev => {
-        if (prev >= 95) return prev;
-        return prev + (prev < 50 ? 2 : 1);
+        if (prev >= 98) return prev;
+        // Slower increments to last longer (targeting ~3-5 mins total)
+        const increment = prev < 30 ? 0.8 : (prev < 60 ? 0.5 : (prev < 90 ? 0.2 : 0.1));
+        return Math.min(98, parseFloat((prev + increment).toFixed(1)));
       });
-    }, 1500);
+    }, 2000);
 
     try {
       // Veo only supports 16:9 and 9:16.

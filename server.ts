@@ -341,6 +341,8 @@ async function startServer() {
   });
 
   app.post("/api/ai/generate-video", authenticate, async (req, res) => {
+    // Increase timeout for this specific high-performance request (10 minutes)
+    req.setTimeout(600000);
     const { prompt, model, aspectRatio } = req.body;
     try {
       if (!prompt) throw new Error("Prompt is required");
@@ -368,8 +370,8 @@ async function startServer() {
 
       console.log(`[AI] Video Operation started: ${operation.name}`);
 
-      // Polling with improved safety
-      let maxRetries = 20;
+      // Polling with improved safety - Extended to 5 minutes (60 * 5s)
+      let maxRetries = 60;
       while (!operation.done && maxRetries > 0) {
         console.log(`[AI] Waiting for video... (${maxRetries} attempts left)`);
         await new Promise(resolve => setTimeout(resolve, 5000));
@@ -381,7 +383,7 @@ async function startServer() {
         maxRetries--;
       }
 
-      if (!operation.done) throw new Error("Tempo limite de geração de vídeo esgotado.");
+      if (!operation.done) throw new Error("Tempo limite de geração de vídeo esgotado após 5 minutos. Tente novamente mais tarde.");
 
       // Robust URI extraction
       const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
