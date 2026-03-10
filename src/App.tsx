@@ -219,7 +219,7 @@ export default function App() {
     setGeneratedVideo(null);
     setGeneratedAudio(null);
     setStatus('Arquitetando narrativa de elite...');
-    const textModel = "gemini-1.5-flash";
+    const textModel = "gemini-3.1-pro-preview";
     try {
       // Log usage
       const aspectRatioMap: Record<string, "1:1" | "9:16" | "16:9"> = {
@@ -1197,7 +1197,7 @@ IMPORTANTE: O texto deve ser focado em conversão e autoridade máxima.`;
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-6 bg-white/5 border border-white/10 rounded-[24px]">
                   <p className="text-[10px] uppercase tracking-widest font-bold text-white/40 mb-1">Modelos</p>
-                  <p className="text-sm font-bold">Gemini 2.0 Flash</p>
+                  <p className="text-sm font-bold">Gemini 3.1 Pro</p>
                 </div>
                 <div className="p-6 bg-white/5 border border-white/10 rounded-[24px]">
                   <p className="text-[10px] uppercase tracking-widest font-bold text-white/40 mb-1">Assets</p>

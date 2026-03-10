@@ -295,7 +295,7 @@ async function startServer() {
     const { prompt, systemInstruction, model } = req.body;
     try {
       if (!prompt) throw new Error("Prompt is required");
-      const targetModel = model || "gemini-1.5-flash";
+      const targetModel = model || "gemini-3.1-pro-preview";
       console.log(`[AI] Generating text with model: ${targetModel}`);
 
       const result = await genAI.models.generateContent({
@@ -319,7 +319,7 @@ async function startServer() {
     const { prompt, aspectRatio, model } = req.body;
     try {
       if (!prompt) throw new Error("Prompt is required");
-      const targetModel = model || "imagen-3.0-generate-001";
+      const targetModel = model || "gemini-2.5-flash-image";
       console.log(`[AI] Generating image with model: ${targetModel}`);
 
       const result = await genAI.models.generateContent({
