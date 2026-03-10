@@ -230,19 +230,23 @@ export default function App() {
         'Carrossel para Story - 9:16': '9:16'
       };
 
-      const prompt = `Crie um Ecossistema de Vendas Master para:
-Negócio: ${negocio}
+      const prompt = `Aja como o Diretor de Criação e Estratégia de Elite da MASTER FUNNEL MARKETING MAIS CORPORATIVO. 
+Crie um ecossistema de marketing digital de alta performance para "${negocio}".
 Ideia Central: ${ideia}
 Público-alvo: ${publico}
 Estilo de Comunicação: ${estilo}
-Formates Solicitados: ${formatos.join(', ')}
-Número de Slides no Carrossel: ${slidesCarrossel}
+Formatos Solicitados: ${formatos.join(', ')}
+${formatos.some(f => f.includes('Carrossel')) ? `- Slides por Carrossel: ${slidesCarrossel}` : ''}
 
-Gere o seguinte conteúdo estruturado exatamente assim:
-1. Uma estratégia de copy de elite para cada formato solicitado.
-2. Para cada asset de imagem, use o formato: [ASSET: Tipo do Asset - Slide X | PROMPT: Descrição detalhada para Midjourney/DALL-E em inglês, fotorealista, cinematográfico]
-3. Para o vídeo, use o formato: [VIDEO_PROMPT: Descrição cinematográfica detalhada do vídeo em inglês]
-4. Para a narração, use o formato: [NARRATION_SCRIPT: Texto persuasivo para locução em português]
+REQUISITOS OBRIGATÓRIOS:
+1. IDIOMA: Todo o conteúdo deve ser em PORTUGUÊS DO BRASIL (PT-BR).
+2. ASSETS_PROMPTS: No final, adicione uma seção "ASSETS_PROMPTS" com prompts para CADA formato.
+3. REGRAS PARA IMAGENS:
+   - Cada asset deve ser identificado como: [ASSET: Nome do Formato (Indique a Proporção 1:1 ou 9:16 ou 16:9 aqui) | PROMPT: Descrição em inglês, cinematográfica, focada no produto].
+   - Para Carrosséis, gere prompts para os ${slidesCarrossel} slides: [ASSET: Nome do Carrossel - Slide X (Proporção) | PROMPT: ...].
+4. VÍDEO E ÁUDIO:
+   - [VIDEO_PROMPT: Descrição cinematográfica em inglês para vídeo de 10s].
+   - [NARRATION_SCRIPT: Texto persuasivo em PT-BR para locução de 10s].
 
 IMPORTANTE: O texto deve ser focado em conversão e autoridade máxima.`;
 
@@ -252,7 +256,7 @@ IMPORTANTE: O texto deve ser focado em conversão e autoridade máxima.`;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: prompt,
-          systemInstruction: "Você é o Diretor de Criação da MASTER FUNNEL. Sua missão é entregar estratégias de marketing de elite, com português impecável (PT-BR), sem erros ortográficos, e tom extremamente profissional e persuasivo.",
+          systemInstruction: "Você é o Diretor de Criação da MASTER FUNNEL. Sua missão é entregar estratégias de marketing de elite, com português impecável (PT-BR), tom persuasivo e autoridade absoluta.",
           model: textModel
         })
       });
