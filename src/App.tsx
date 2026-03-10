@@ -629,7 +629,7 @@ export default function App() {
           <div className="text-center space-y-4">
             <div className="flex justify-center mb-6">
               <img
-                src="/Logo_Mais_Braco_orange.png"
+                src="https://maiscorporativo.tur.br/wp-content/uploads/2025/02/Logo-azul-png.png"
                 alt="Logo"
                 className="h-16 object-contain"
               />
@@ -719,7 +719,7 @@ export default function App() {
       <aside className="fixed left-0 top-0 h-full w-20 bg-[#0c2444] border-r border-white/5 flex flex-col items-center py-8 gap-8 z-50 hidden lg:flex">
         <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20 overflow-hidden p-2 border border-white/10">
           <img
-            src="/logo.png"
+            src="https://maiscorporativo.tur.br/wp-content/uploads/2025/02/Logo-azul-png.png"
             alt="Logo"
             className="w-full h-full object-contain"
           />
@@ -766,7 +766,7 @@ export default function App() {
       <header className="h-20 border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl sticky top-0 z-40 px-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <img
-            src="/Logo_Mais_Braco_orange.png"
+            src="https://maiscorporativo.tur.br/wp-content/uploads/2025/02/Logo-azul-png.png"
             alt="Logo"
             className="h-10 object-contain"
           />
