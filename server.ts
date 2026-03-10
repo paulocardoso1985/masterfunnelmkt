@@ -343,41 +343,51 @@ async function startServer() {
   app.post("/api/ai/generate-video", authenticate, async (req, res) => {
     const { prompt, model, aspectRatio } = req.body;
     try {
-      // Direct call using the project's SDK pattern
+      if (!prompt) throw new Error("Prompt is required");
+      const targetModel = model || 'veo-3.1-fast-generate-preview';
+      console.log(`[AI] Generating video with model: ${targetModel}`);
+
       let operation: any = await (genAI.models as any).generateVideos({
-        model: model || 'veo-3.1-fast-generate-preview',
+        model: targetModel,
         prompt: prompt,
         config: {
           numberOfVideos: 1,
           resolution: '720p',
           aspectRatio: aspectRatio || '16:9',
-          durationSeconds: 8
+          durationSeconds: 10
         }
       });
 
-      // Simple polling on the server to simplify for the client
-      let maxRetries = 20;
+      console.log(`[AI] Video Operation started: ${operation.name}`);
+
+      // Polling with improved safety
+      let maxRetries = 15;
       while (!operation.done && maxRetries > 0) {
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        operation = await (genAI.operations as any).getVideosOperation({ operation: operation });
+        console.log(`[AI] Waiting for video... (${maxRetries} attempts left)`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        operation = await (genAI.operations as any).getVideosOperation({ name: operation.name });
         maxRetries--;
       }
 
-      const downloadLink = (operation as any).response?.generatedVideos?.[0]?.video?.uri;
-      if (downloadLink) {
-        const videoRes = await fetch(downloadLink, {
+      if (!operation.done) throw new Error("Tempo limite de geração de vídeo esgotado.");
+
+      // Robust URI extraction
+      const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
+      if (videoUri) {
+        console.log(`[AI] Video generated! URI: ${videoUri}`);
+        const videoRes = await fetch(videoUri, {
           headers: { 'x-goog-api-key': GEMINI_API_KEY }
         });
         if (!videoRes.ok) throw new Error(`Falha ao baixar vídeo: ${videoRes.statusText}`);
         const buffer = await videoRes.arrayBuffer();
-        const base64Video = Buffer.from(buffer).toString('base64');
-        res.json({ data: base64Video });
+        res.json({ data: Buffer.from(buffer).toString('base64') });
       } else {
-        res.status(500).json({ error: "Falha ao gerar vídeo: URI não encontrada." });
+        console.error("[AI] Video response missing URI:", JSON.stringify(operation.response, null, 2));
+        throw new Error("O modelo não retornou uma URI de vídeo válida.");
       }
     } catch (err: any) {
       console.error("AI Video Generation Error:", err);
-      res.status(err.status || 500).json({ error: err.message });
+      res.status(err.status || 500).json({ error: err.message, details: err.stack });
     }
   });
 
