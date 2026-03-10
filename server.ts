@@ -294,27 +294,38 @@ async function startServer() {
   app.post("/api/ai/generate-text", authenticate, async (req, res) => {
     const { prompt, systemInstruction, model } = req.body;
     try {
-      console.log(`[AI] Generating text with model: ${model || "gemini-3.1-pro-preview"}`);
+      if (!prompt) throw new Error("Prompt is required");
+      const targetModel = model || "gemini-1.5-flash";
+      console.log(`[AI] Generating text with model: ${targetModel}`);
+
       const result = await genAI.models.generateContent({
-        model: model || "gemini-3.1-pro-preview",
+        model: targetModel,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: { systemInstruction }
+        config: { systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined }
       });
       res.json({ text: result.text });
     } catch (err: any) {
       console.error("AI Text Generation Error:", err);
-      res.status(err.status || 500).json({ error: err.message });
+      // Detailed error for the client to help debugging
+      res.status(err.status || 500).json({
+        error: err.message,
+        details: err.details || err.stack,
+        payload: { model, promptLength: prompt?.length }
+      });
     }
   });
 
   app.post("/api/ai/generate-image", authenticate, async (req, res) => {
     const { prompt, aspectRatio, model } = req.body;
     try {
-      console.log(`[AI] Generating image with model: ${model || "gemini-2.5-flash-image"}`);
+      if (!prompt) throw new Error("Prompt is required");
+      const targetModel = model || "imagen-3.0-generate-001";
+      console.log(`[AI] Generating image with model: ${targetModel}`);
+
       const result = await genAI.models.generateContent({
-        model: model || "gemini-2.5-flash-image",
+        model: targetModel,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: { imageConfig: { aspectRatio } }
+        config: { imageConfig: { aspectRatio: aspectRatio || '1:1' } }
       });
 
       const part = result.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
