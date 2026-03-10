@@ -340,19 +340,21 @@ async function startServer() {
     }
   });
 
+  // Endpoint 1: Iniciar Geração (Assíncrono)
   app.post("/api/ai/generate-video", authenticate, async (req, res) => {
-    // Increase timeout for this specific high-performance request (10 minutes)
-    req.setTimeout(600000);
-    const { prompt, model, aspectRatio } = req.body;
+    const { prompt, aspectRatio, apiKey } = req.body;
     try {
       if (!prompt) throw new Error("Prompt is required");
-      const targetModel = model || 'veo-3.1-generate-preview';
-      console.log(`[AI] Generating video with model: ${targetModel}`);
 
-      // Enhance prompt with professional/corporate requirements as per user demand
-      const professionalPrompt = `${prompt}. MANDATORY REQUIREMENTS: The video must be professional, corporate, and high-end. If there is any voiceover or audio integration, it MUST use perfect Brazilian Portuguese (PT-BR) with a professional business tone, correct intonation, and no artifacts/bizarreness. This is for an elite corporate environment. Length: 8 seconds.`;
+      // Use a chave fornecida pelo frontend ou a padrão do servidor
+      const clientGenAI = apiKey ? new GoogleGenAI({ apiKey }) : genAI;
+      const targetModel = 'veo-3.1-generate-preview';
 
-      let operation: any = await (genAI.models as any).generateVideos({
+      console.log(`[AI] Starting video generation operation (Model: ${targetModel}, Aspect: ${aspectRatio || '16:9'})`);
+
+      const professionalPrompt = `${prompt}. MANDATORY REQUIREMENTS: The video must be professional, corporate, and high-end. If there is any voiceover or audio integration, it MUST use perfect Brazilian Portuguese (PT-BR) with a professional business tone, correct intonation, and no artifacts/bizarreness. Length: 8 seconds.`;
+
+      const operation: any = await (clientGenAI.models as any).generateVideos({
         model: targetModel,
         prompt: professionalPrompt,
         config: {
@@ -364,44 +366,59 @@ async function startServer() {
       });
 
       if (!operation || !operation.name) {
-        console.error("[AI] Critical Error: Operation not started or missing name", operation);
-        throw new Error("A API da Google não conseguiu iniciar a operação de vídeo. Verifique se o modelo está habilitado na sua conta.");
+        throw new Error("A API não conseguiu iniciar a operação. Verifique sua chave e permissões.");
       }
 
-      console.log(`[AI] Video Operation started: ${operation.name}`);
+      console.log(`[AI] Operation started: ${operation.name}`);
+      res.json({ operationName: operation.name });
 
-      // Polling with improved safety - Extended to 5 minutes (60 * 5s)
-      let maxRetries = 60;
-      while (!operation.done && maxRetries > 0) {
-        console.log(`[AI] Waiting for video... (${maxRetries} attempts left)`);
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        try {
-          operation = await (genAI.operations as any).getVideosOperation({ name: operation.name });
-        } catch (pollErr: any) {
-          console.warn("[AI] Polling attempt failed, retrying...", pollErr.message);
-        }
-        maxRetries--;
-      }
-
-      if (!operation.done) throw new Error("Tempo limite de geração de vídeo esgotado após 5 minutos. Tente novamente mais tarde.");
-
-      // Robust URI extraction
-      const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
-      if (videoUri) {
-        console.log(`[AI] Video generated! URI: ${videoUri}`);
-        const videoRes = await fetch(videoUri, {
-          headers: { 'x-goog-api-key': GEMINI_API_KEY }
-        });
-        if (!videoRes.ok) throw new Error(`Falha ao baixar vídeo: ${videoRes.statusText}`);
-        const buffer = await videoRes.arrayBuffer();
-        res.json({ data: Buffer.from(buffer).toString('base64') });
-      } else {
-        console.error("[AI] Video response missing URI:", JSON.stringify(operation.response, null, 2));
-        throw new Error("O modelo não retornou uma URI de vídeo válida.");
-      }
     } catch (err: any) {
-      console.error("AI Video Generation Error:", err);
-      res.status(err.status || 500).json({ error: err.message, details: err.stack });
+      console.error("AI Video Start Error:", err);
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  // Endpoint 2: Polling de Status
+  app.get("/api/ai/operation-status/:name", authenticate, async (req, res) => {
+    try {
+      // Tenta pegar a chave do header (enviada pelo frontend se houver) ou usa a padrão
+      const apiKey = req.headers['x-goog-api-key'] as string || GEMINI_API_KEY;
+      const clientGenAI = new GoogleGenAI({ apiKey });
+
+      const operation: any = await (clientGenAI.operations as any).getVideosOperation({
+        name: req.params.name
+      });
+
+      res.json({
+        done: operation.done,
+        videoUri: operation.response?.generatedVideos?.[0]?.video?.uri,
+        error: operation.error
+      });
+    } catch (err: any) {
+      console.error("AI Video Status Error:", err);
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  // Endpoint 3: Proxy de Vídeo para evitar CORS
+  app.get("/api/ai/video-proxy", authenticate, async (req, res) => {
+    const videoUrl = req.query.url as string;
+    try {
+      if (!videoUrl) throw new Error("URL é obrigatória");
+
+      const apiKey = req.headers['x-goog-api-key'] as string || GEMINI_API_KEY;
+      const videoRes = await fetch(videoUrl, {
+        headers: { 'x-goog-api-key': apiKey }
+      });
+
+      if (!videoRes.ok) throw new Error(`Falha ao buscar vídeo: ${videoRes.statusText}`);
+
+      res.setHeader("Content-Type", "video/mp4");
+      const buffer = await videoRes.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (err: any) {
+      console.error("Video Proxy Error:", err);
+      res.status(500).send(err.message);
     }
   });
 
