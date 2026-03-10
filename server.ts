@@ -296,7 +296,7 @@ async function startServer() {
     try {
       const result = await genAI.models.generateContent({
         model: model || "gemini-3.1-pro-preview",
-        contents: prompt,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { systemInstruction }
       });
       res.json({ text: result.text });
@@ -311,7 +311,7 @@ async function startServer() {
     try {
       const result = await genAI.models.generateContent({
         model: model || "gemini-2.5-flash-image",
-        contents: { parts: [{ text: prompt }] },
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { imageConfig: { aspectRatio } }
       });
 
