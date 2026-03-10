@@ -231,24 +231,46 @@ export default function App() {
       };
 
       const prompt = `Aja como o Diretor de Criação e Estratégia de Elite da MASTER FUNNEL MARKETING MAIS CORPORATIVO. 
-Crie um ecossistema de marketing digital de alta performance para "${negocio}".
+Crie um ecossistema de marketing digital de ALTA PERFORMANCE e COMPLETAMENTE DETALHADO para "${negocio}".
+
 Ideia Central: ${ideia}
 Público-alvo: ${publico}
-Estilo de Comunicação: ${estilo}
+Estilo de Comunicação: ${estilo} (Siga rigorosamente este estilo)
 Formatos Solicitados: ${formatos.join(', ')}
 ${formatos.some(f => f.includes('Carrossel')) ? `- Slides por Carrossel: ${slidesCarrossel}` : ''}
 
-REQUISITOS OBRIGATÓRIOS:
-1. IDIOMA: Todo o conteúdo deve ser em PORTUGUÊS DO BRASIL (PT-BR).
-2. ASSETS_PROMPTS: No final, adicione uma seção "ASSETS_PROMPTS" com prompts para CADA formato.
+ESTRUTURA OBRIGATÓRIA DA RESPOSTA (NÃO PULE NENHUMA SEÇÃO):
+
+1. POSICIONAMENTO DE ELITE E PROPOSTA DE VALOR
+   - Defina o tom de voz e a autoridade da marca.
+   - Proposta Única de Valor (UVP) focada em High-End Corporate.
+
+2. ARQUITETURA DO FUNIL DE CONVERSÃO (DETALHADO)
+   - TOPO DE FUNIL (ToFu): Atração e consciência.
+   - MEIO DE FUNIL (MoFu): Desejo e qualificação.
+   - FUNDO DE FUNIL (BoFu): Escassez e conversão direta.
+
+3. MIX DE CANAIS ESTRATÉGICOS & PLANO DE TRÁFEGO PAGO
+   - Detalhe estratégias para LinkedIn Ads, Meta Ads e Google Search.
+   - Distribuição de verba e foco de ROI.
+
+4. CRONOGRAMA DE IMPACTO (PLANO DE AÇÃO DE 30 DIAS)
+   - Divida em fases: Teaser, Line-up, Tração e Escassez.
+
+5. ROTEIRO DE NARRAÇÃO PROFISSIONAL (MASTER)
+   - Texto completo para locução em PT-BR, com tom grave, compassado e de autoridade máxima.
+
+REQUISITOS TÉCNICOS ADICIONAIS:
+1. IDIOMA: Todo o conteúdo deve ser em PORTUGUÊS DO BRASIL (PT-BR) de altíssimo nível.
+2. ASSETS_PROMPTS: No final, adicione a seção "ASSETS_PROMPTS" com prompts cinematográficos para CADA formato.
 3. REGRAS PARA IMAGENS:
    - Cada asset deve ser identificado como: [ASSET: Nome do Formato (Indique a Proporção 1:1 ou 9:16 ou 16:9 aqui) | PROMPT: Descrição em inglês, cinematográfica, focada no produto].
    - Para Carrosséis, gere prompts para os ${slidesCarrossel} slides: [ASSET: Nome do Carrossel - Slide X (Proporção) | PROMPT: ...].
 4. VÍDEO E ÁUDIO:
-   - [VIDEO_PROMPT: Descrição cinematográfica em inglês para vídeo de 10s].
-   - [NARRATION_SCRIPT: Texto persuasivo em PT-BR para locução de 10s].
+   - [VIDEO_PROMPT: Descrição cinematográfica em inglês para vídeo de impacto de 8s].
+   - [NARRATION_SCRIPT: Texto persuasivo em PT-BR para locução de 8s].
 
-IMPORTANTE: O texto deve ser focado em conversão e autoridade máxima.`;
+IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade absoluta. Não seja sucinto. Seja completo e profissional.`;
 
       // 1. Generate Strategy Text & Video Prompts (Now via Server)
       const textResponse = await fetch('/api/ai/generate-text', {
