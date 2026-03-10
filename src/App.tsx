@@ -100,6 +100,8 @@ export default function App() {
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('');
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -401,7 +403,17 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
     if (!result?.videoPrompt) return;
 
     setVideoLoading(true);
-    setStatus('Gerando vídeo cinematográfico (Veo 3.1)...');
+    setVideoError(null);
+    setVideoProgress(5);
+    setStatus('Iniciando geração de vídeo cinematográfico...');
+
+    // Progress simulation
+    const progressInterval = setInterval(() => {
+      setVideoProgress(prev => {
+        if (prev >= 95) return prev;
+        return prev + (prev < 50 ? 2 : 1);
+      });
+    }, 1500);
 
     try {
       // Veo only supports 16:9 and 9:16.
@@ -417,22 +429,29 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
       });
 
       if (!resp.ok) {
-        const errData = await resp.json();
-        throw new Error(errData.error || `Erro de servidor (${resp.status})`);
+        let errMessage = `Erro de servidor (${resp.status})`;
+        try {
+          const errData = await resp.json();
+          errMessage = errData.error || errMessage;
+        } catch (e) { /* ignore */ }
+        throw new Error(errMessage);
       }
 
       const data = await resp.json();
       if (data.data) {
+        setVideoProgress(100);
         setGeneratedVideo(`data:video/mp4;base64,${data.data}`);
+        setStatus('Vídeo gerado com sucesso!');
       }
     } catch (err: any) {
       console.error("Video Generation Error:", err);
-      setError(`Falha ao gerar vídeo: ${err.message || 'Erro desconhecido'}`);
+      setVideoError(err.message || 'Erro desconhecido ao gerar vídeo');
     } finally {
+      clearInterval(progressInterval);
       setVideoLoading(false);
-      setStatus('');
     }
   };
+
 
   const generateAudio = async () => {
     if (!result?.narrationScript) return;
@@ -1319,14 +1338,42 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
                               "{result.videoPrompt}"
                             </p>
                             {!generatedVideo ? (
-                              <button
-                                onClick={generateVideoAsset}
-                                disabled={videoLoading}
-                                className="px-8 py-4 bg-white text-[#0c2444] rounded-2xl font-bold uppercase tracking-widest text-[10px] hover:bg-[#f58f2a] hover:text-white transition-all flex items-center gap-3"
-                              >
-                                {videoLoading ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />}
-                                {videoLoading ? 'Processando Vídeo...' : 'Gerar Vídeo (Veo 3.1)'}
-                              </button>
+                              <div className="space-y-6">
+                                <button
+                                  onClick={generateVideoAsset}
+                                  disabled={videoLoading}
+                                  className="px-8 py-4 bg-white text-[#0c2444] rounded-2xl font-bold uppercase tracking-widest text-[10px] hover:bg-[#f58f2a] hover:text-white transition-all flex items-center gap-3 disabled:opacity-50"
+                                >
+                                  {videoLoading ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />}
+                                  {videoLoading ? 'Processando Vídeo...' : 'Gerar Vídeo (Veo 3.1)'}
+                                </button>
+
+                                {videoLoading && (
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-white/40">
+                                      <span>Progresso da Geração</span>
+                                      <span>{videoProgress}%</span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                      <motion.div
+                                        className="h-full bg-[#f58f2a]"
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${videoProgress}%` }}
+                                        transition={{ duration: 0.5 }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+
+                                {videoError && (
+                                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3">
+                                    <AlertCircle className="text-red-500 shrink-0" size={16} />
+                                    <p className="text-xs text-red-500/80 leading-relaxed">
+                                      {videoError}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <div className="flex gap-4">
                                 <button
@@ -1334,6 +1381,12 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
                                   className="px-6 py-3 bg-white/10 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-white/20 transition-all"
                                 >
                                   <Download size={14} /> Download MP4
+                                </button>
+                                <button
+                                  onClick={() => { setGeneratedVideo(null); setVideoProgress(0); }}
+                                  className="px-6 py-3 bg-white/5 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 transition-all"
+                                >
+                                  <RefreshCw size={14} /> Gerar Novamente
                                 </button>
                               </div>
                             )}

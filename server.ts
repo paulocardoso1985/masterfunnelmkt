@@ -361,14 +361,23 @@ async function startServer() {
         }
       });
 
+      if (!operation || !operation.name) {
+        console.error("[AI] Critical Error: Operation not started or missing name", operation);
+        throw new Error("A API da Google não conseguiu iniciar a operação de vídeo. Verifique se o modelo está habilitado na sua conta.");
+      }
+
       console.log(`[AI] Video Operation started: ${operation.name}`);
 
       // Polling with improved safety
-      let maxRetries = 15;
+      let maxRetries = 20;
       while (!operation.done && maxRetries > 0) {
         console.log(`[AI] Waiting for video... (${maxRetries} attempts left)`);
         await new Promise(resolve => setTimeout(resolve, 5000));
-        operation = await (genAI.operations as any).getVideosOperation({ name: operation.name });
+        try {
+          operation = await (genAI.operations as any).getVideosOperation({ name: operation.name });
+        } catch (pollErr: any) {
+          console.warn("[AI] Polling attempt failed, retrying...", pollErr.message);
+        }
         maxRetries--;
       }
 
