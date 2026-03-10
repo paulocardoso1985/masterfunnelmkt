@@ -1,7 +1,10 @@
 # Build stage
-FROM node:20-slim AS builder
+FROM node:20 AS builder
 
 WORKDIR /app
+
+# Install build dependencies for better-sqlite3
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
 RUN npm install
@@ -14,6 +17,9 @@ FROM node:20-slim
 
 WORKDIR /app
 
+# We need some runtime libs for better-sqlite3
+RUN apt-get update && apt-get install -y libatomic1 && rm -rf /var/lib/apt/lists/*
+
 COPY package*.json ./
 RUN npm install --production
 
@@ -22,10 +28,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/server.ts ./
 COPY --from=builder /app/tsconfig.json ./
 
-# Install tsx globally or as a dependency to run server.ts
+# Global tsx for execution
 RUN npm install -g tsx typescript
 
-# Create data directory for SQLite
 RUN mkdir -p data && chmod 777 data
 
 ENV NODE_ENV=production
