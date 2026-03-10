@@ -419,6 +419,30 @@ async function startServer() {
     }
   });
 
+  // --- Diagnostic & Debug Routes ---
+  app.get("/api/ai/debug-simple", authenticate, async (req, res) => {
+    try {
+      console.log("[AI-DEBUG] Testing simple generation...");
+      const result = await genAI.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: [{ role: 'user', parts: [{ text: "Diga 'Conexão OK' em português." }] }]
+      });
+      res.json({ success: true, text: result.text });
+    } catch (err: any) {
+      console.error("[AI-DEBUG] Simple test failed:", err);
+      res.status(err.status || 500).json({ error: err.message, details: err.stack });
+    }
+  });
+
+  // Handle unhandled rejections to prevent silent crashes
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  });
+
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+  });
+
   // --- Vite Integration ---
   if (process.env.NODE_ENV !== "production") {
     console.log("Iniciando em modo DESENVOLVIMENTO (Vite Middleware)");
