@@ -284,14 +284,30 @@ REQUISITOS TÉCNICOS ADICIONAIS:
 
 IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade absoluta. Não seja sucinto. Seja completo e profissional.`;
 
+      // Verificação de API Key para ambiente AI Studio
+      let selectedApiKey = '';
+      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+        if (!window.aistudio.hasSelectedApiKey()) {
+          await window.aistudio.openSelectKey();
+          return;
+        }
+        if (typeof (window.aistudio as any).getApiKey === 'function') {
+          selectedApiKey = await (window.aistudio as any).getApiKey();
+        }
+      }
+
       // 1. Generate Strategy Text & Video Prompts (Now via Server)
       const textResponse = await fetch('/api/ai/generate-text', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(selectedApiKey ? { 'x-goog-api-key': selectedApiKey } : {})
+        },
         body: JSON.stringify({
           prompt: prompt,
           systemInstruction: "Você é o Diretor de Criação da MASTER FUNNEL. Sua missão é entregar estratégias de marketing de elite, com português impecável (PT-BR), tom persuasivo e autoridade absoluta.",
-          model: textModel
+          model: textModel,
+          apiKey: selectedApiKey
         })
       });
 
@@ -341,8 +357,16 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
         try {
           const res = await fetch('/api/ai/generate-image', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: p, aspectRatio: ratio, model: imageModel })
+            headers: {
+              'Content-Type': 'application/json',
+              ...(selectedApiKey ? { 'x-goog-api-key': selectedApiKey } : {})
+            },
+            body: JSON.stringify({
+              prompt: p,
+              aspectRatio: ratio,
+              model: imageModel,
+              apiKey: selectedApiKey
+            })
           });
 
           if (!res.ok) throw new Error(`Imagem falhou (${res.status})`);
@@ -413,10 +437,15 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
     if (!result?.videoPrompt) return;
 
     // Verificação de API Key para ambiente Veo no AI Studio
+    let selectedApiKey = '';
     if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
       if (!window.aistudio.hasSelectedApiKey()) {
         await window.aistudio.openSelectKey();
         return;
+      }
+      // @ts-ignore - aistudio might have getApiKey or similar
+      if (typeof (window.aistudio as any).getApiKey === 'function') {
+        selectedApiKey = await (window.aistudio as any).getApiKey();
       }
     }
 
@@ -429,15 +458,24 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
       // 1. Inicia a Geração no Backend
       const startResp = await fetch('/api/ai/generate-video', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(selectedApiKey ? { 'x-goog-api-key': selectedApiKey } : {})
+        },
         body: JSON.stringify({
           prompt: result.videoPrompt,
-          aspectRatio: videoAspectRatio
+          aspectRatio: videoAspectRatio,
+          apiKey: selectedApiKey
         })
       });
 
       if (!startResp.ok) {
-        const errData = await startResp.json();
+        let errData;
+        try {
+          errData = await startResp.json();
+        } catch (e) {
+          throw new Error(`Erro de rede (${startResp.status}). O servidor pode estar reiniciando.`);
+        }
         throw new Error(errData.error || `Erro ao iniciar (${startResp.status})`);
       }
 
@@ -460,7 +498,11 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
           return Math.min(98, prev + inc);
         });
 
-        const statusResp = await fetch(`/api/ai/operation-status/${operationName}`);
+        const statusResp = await fetch(`/api/ai/operation-status/${operationName}`, {
+          headers: {
+            ...(selectedApiKey ? { 'x-goog-api-key': selectedApiKey } : {})
+          }
+        });
         if (!statusResp.ok) continue;
 
         const statusData = await statusResp.json();
@@ -496,10 +538,24 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
     setStatus('Gerando narração profissional em PT-BR...');
 
     try {
+      // Verificação de API Key para AI Studio
+      let selectedApiKey = '';
+      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+        if (typeof (window.aistudio as any).getApiKey === 'function') {
+          selectedApiKey = await (window.aistudio as any).getApiKey();
+        }
+      }
+
       const resp = await fetch('/api/ai/generate-audio', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: result.narrationScript })
+        headers: {
+          'Content-Type': 'application/json',
+          ...(selectedApiKey ? { 'x-goog-api-key': selectedApiKey } : {})
+        },
+        body: JSON.stringify({
+          text: result.narrationScript,
+          apiKey: selectedApiKey
+        })
       });
 
       if (!resp.ok) {
