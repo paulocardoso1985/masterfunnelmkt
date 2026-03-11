@@ -62,7 +62,7 @@ if (!db.prepare("SELECT id FROM users WHERE email = ?").get(adminEmail)) {
 const JWT_SECRET = process.env.JWT_SECRET || "master-funnel-secret-2026";
 const PORT = Number(process.env.PORT) || 3000;
 
-// Centralized REST Helper with Verbose Logging
+// Centralized REST Helper with Dynamic Location Support
 async function fetchVertex(uriPath: string, method: string = 'GET', body?: any) {
   const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform', ...authOptions });
   const client = await auth.getClient();
@@ -71,11 +71,21 @@ async function fetchVertex(uriPath: string, method: string = 'GET', body?: any) 
 
   if (!token) throw new Error("No Google Access Token");
 
-  const url = uriPath.startsWith('projects/')
-    ? `https://${location}-aiplatform.googleapis.com/v1/${uriPath}`
-    : `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/${uriPath}`;
+  // Dynamically determine location from path if it's a full resource name
+  let targetLocation = location;
+  if (uriPath.startsWith('projects/')) {
+    const parts = uriPath.split('/');
+    const locIndex = parts.indexOf('locations');
+    if (locIndex !== -1 && parts[locIndex + 1]) {
+      targetLocation = parts[locIndex + 1];
+    }
+  }
 
-  console.log(`[Vertex REST] Calling: ${method} ${url}`);
+  const url = uriPath.startsWith('projects/')
+    ? `https://${targetLocation}-aiplatform.googleapis.com/v1/${uriPath}`
+    : `https://${targetLocation}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${targetLocation}/${uriPath}`;
+
+  console.log(`[Vertex REST] Calling (${targetLocation}): ${method} ${url}`);
 
   const response = await fetch(url, {
     method,
