@@ -417,30 +417,40 @@ async function startServer() {
       console.log(`[Vertex AI] Starting enterprise video generation (Model: ${targetModel})`);
       const modelInstance = vAI.getGenerativeModel({ model: targetModel });
 
-      const startPromise = (modelInstance as any).generateVideos({
-        prompt: professionalPrompt,
-        config: {
-          numberOfVideos: 1,
-          resolution: '720p',
-          aspectRatio: aspectRatio || '16:9',
-          durationSeconds: 8
+      // For Veo/Video on Vertex AI, it's often generateContent with VIDEO modality
+      // or specialized methods. Since 'generateVideos' failed, we use the standard generateContent
+      // which is the common interface in the latest SDKs.
+      const startPromise = modelInstance.generateContent({
+        contents: [{ role: 'user', parts: [{ text: professionalPrompt }] }],
+        generationConfig: {
+          // @ts-ignore - Vertex specific config
+          responseModalities: ["VIDEO"],
         }
       });
 
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: O servidor de vídeo não respondeu em 60 segundos.")), 60000));
 
-      operation = await Promise.race([startPromise, timeoutPromise]);
+      const result = await Promise.race([startPromise, timeoutPromise]) as any;
+      const response = await result.response;
 
-      if (!operation || !operation.name) {
-        throw new Error("A API não conseguiu iniciar a operação. Verifique sua chave e permissões.");
+      console.log(`[Vertex AI] Video Content received.`);
+      // Extract the video data if available directly or via LRO if the SDK handles it
+      const part = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData || p.fileData);
+
+      if (part) {
+        res.json({ success: true, part });
+      } else {
+        throw new Error("O modelo não retornou dados de vídeo.");
       }
 
-      console.log(`[AI] Operation started: ${operation.name}`);
-      res.json({ operationName: operation.name });
-
     } catch (err: any) {
-      console.error("AI Video Start Error:", err);
-      res.status(err.status || 500).json({ error: err.message });
+      console.error("AI Video Generation Error Details:", {
+        message: err.message,
+        stack: err.stack,
+        details: err.details,
+        response: err.response?.data
+      });
+      res.status(err.status || 500).json({ error: err.message, details: err.details });
     }
   });
 
