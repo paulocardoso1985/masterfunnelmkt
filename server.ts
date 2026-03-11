@@ -100,8 +100,24 @@ const getVertexAI = () => {
   const loc = process.env.GOOGLE_LOCATION?.trim() || "us-central1";
 
   if (!vertexAI && proj && proj !== "") {
+    const creds = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    let authOptions = undefined;
+
+    if (creds && creds.includes('{')) {
+      try {
+        authOptions = { credentials: JSON.parse(creds) };
+        console.log(`[Vertex AI] Service Account JSON detected and parsed.`);
+      } catch (e) {
+        console.error(`[Vertex AI] Error parsing GOOGLE_APPLICATION_CREDENTIALS:`, e);
+      }
+    }
+
     console.log(`[Vertex AI] Initializing for Project: ${proj}, Location: ${loc}`);
-    vertexAI = new VertexAI({ project: proj, location: loc });
+    vertexAI = new VertexAI({
+      project: proj,
+      location: loc,
+      googleAuthOptions: authOptions
+    });
   }
   return vertexAI;
 };
