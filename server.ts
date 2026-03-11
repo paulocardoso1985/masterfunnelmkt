@@ -92,7 +92,27 @@ seedAdmin();
 
 const JWT_SECRET = process.env.JWT_SECRET || "master-funnel-secret-2026";
 const PORT = Number(process.env.PORT) || 3000;
-// genAI is now removed in favor of vertexAI
+
+// Centralized Google Auth Helper to handle JSON strings or File paths
+const getGoogleAuthOptions = () => {
+  const creds = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
+  if (!creds) return {};
+
+  if (creds.includes('{')) {
+    try {
+      const parsed = JSON.parse(creds);
+      console.log(`[Auth] Using JSON credentials for Project: ${parsed.project_id}`);
+      return { credentials: parsed };
+    } catch (e) {
+      console.error(`[Auth] Error parsing GOOGLE_APPLICATION_CREDENTIALS JSON:`, e);
+      return {};
+    }
+  }
+
+  console.log(`[Auth] Using key file: ${creds}`);
+  return { keyFilename: creds };
+};
+
 let vertexAI: any = null;
 
 // Lazy Vertex AI initialization helper
@@ -101,29 +121,18 @@ const getVertexAI = () => {
   const loc = process.env.GOOGLE_LOCATION?.trim() || "us-central1";
 
   if (!vertexAI && proj && proj !== "") {
-    const creds = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-    let authOptions = undefined;
-
-    if (creds && creds.includes('{')) {
-      try {
-        authOptions = { credentials: JSON.parse(creds) };
-        console.log(`[Vertex AI] Service Account JSON detected and parsed.`);
-      } catch (e) {
-        console.error(`[Vertex AI] Error parsing GOOGLE_APPLICATION_CREDENTIALS:`, e);
-      }
-    }
-
+    const authOpts = getGoogleAuthOptions();
     console.log(`[Vertex AI] Initializing for Project: ${proj}, Location: ${loc}`);
     vertexAI = new VertexAI({
       project: proj,
       location: loc,
-      googleAuthOptions: authOptions
+      googleAuthOptions: authOpts
     });
   }
   return vertexAI;
 };
 
-// Periodic check for initialization (helpful after cold starts or var changes)
+// Periodic check for initialization
 setInterval(() => getVertexAI(), 30000);
 
 async function startServer() {
@@ -131,13 +140,10 @@ async function startServer() {
   app.use(express.json());
   app.use(cookieParser());
 
-  // Serve static files from public folder (fallback/dev)
   const publicPath = path.join(__dirname, "public");
   const distPath = path.join(__dirname, "dist");
-
   app.use(express.static(publicPath));
 
-  // Explicit routes for logos with detailed logging
   const serveLogo = (fileName: string) => (req: any, res: any) => {
     const locations = [
       path.join(publicPath, fileName),
@@ -149,19 +155,15 @@ async function startServer() {
 
     for (const loc of locations) {
       if (fs.existsSync(loc)) {
-        console.log(`[Static] Serving ${fileName} from ${loc}`);
         return res.sendFile(loc);
       }
     }
-
-    console.warn(`[Static] CRITICAL: ${fileName} not found. Searched:`, locations);
     res.status(404).send("Logo not found");
   };
 
   app.get("/logo.png", serveLogo("logo.png"));
   app.get("/Logo_Mais_Braco_orange.png", serveLogo("Logo_Mais_Braco_orange.png"));
 
-  // --- Auth Middleware ---
   const authenticate = (req: any, res: any, next: any) => {
     const token = req.cookies.auth_token;
     if (!token) return res.status(401).json({ error: "Não autorizado" });
@@ -174,28 +176,9 @@ async function startServer() {
     }
   };
 
-  // Debug route to see files in the container
-  app.get("/api/admin/debug-files", authenticate, (req: any, res) => {
-    if (req.user.role !== "admin") return res.status(403).send("Forbidden");
-    try {
-      const getDir = (dir: string) => fs.existsSync(dir) ? fs.readdirSync(dir) : [];
-      res.json({
-        cwd: process.cwd(),
-        dirname: __dirname,
-        root: getDir(__dirname),
-        public: getDir(publicPath),
-        dist: getDir(distPath)
-      });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // --- Auth Routes ---
   app.post("/api/login", (req, res) => {
     const { email, password } = req.body;
     const user: any = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
-
     if (!user || !bcrypt.compareSync(password, user.password)) {
       return res.status(401).json({ error: "Credenciais inválidas" });
     }
@@ -204,9 +187,8 @@ async function startServer() {
     res.json({ user: { id: user.id, email: user.email, role: user.role, name: user.name } });
   });
 
-  // API routes go here
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+    res.json({ status: "ok", timestamp: new Date().toISOString(), vertexInitialized: !!vertexAI });
   });
 
   app.get("/api/me", authenticate, (req: any, res) => {
@@ -218,63 +200,10 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // --- Usage Monitoring ---
-  app.post("/api/log-usage", authenticate, (req: any, res) => {
-    const { action, params } = req.body;
-    db.prepare("INSERT INTO logs (userId, userName, userEmail, action, params) VALUES (?, ?, ?, ?, ?)").run(
-      req.user.id,
-      req.user.name,
-      req.user.email,
-      action,
-      JSON.stringify(params)
-    );
-    res.json({ success: true });
-  });
-
-  app.get("/api/admin/logs", authenticate, (req: any, res) => {
-    if (req.user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
-    const logs = db.prepare("SELECT * FROM logs ORDER BY timestamp DESC LIMIT 100").all();
-    res.json({ logs: logs.map((l: any) => ({ ...l, params: JSON.parse(l.params) })) });
-  });
-
-  // --- User Management ---
-  app.get("/api/admin/users", authenticate, (req: any, res) => {
-    if (req.user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
-    const users = db.prepare("SELECT id, email, role, name FROM users").all();
-    res.json({ users });
-  });
-
-  app.post("/api/admin/users", authenticate, (req: any, res) => {
-    if (req.user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
-    const { email, password, name, role } = req.body;
-    try {
-      db.prepare("INSERT INTO users (email, password, name, role) VALUES (?, ?, ?, ?)").run(
-        email,
-        bcrypt.hashSync(password, 10),
-        name,
-        role || "user"
-      );
-      res.json({ success: true });
-    } catch (err) {
-      res.status(400).json({ error: "E-mail já cadastrado ou dados inválidos" });
-    }
-  });
-
-  app.delete("/api/admin/users/:id", authenticate, (req: any, res) => {
-    if (req.user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
-    if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ error: "Não pode excluir a si mesmo" });
-    db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
-    res.json({ success: true });
-  });
-
-  // --- Strategy History ---
   app.get("/api/strategies", authenticate, (req: any, res) => {
-    let strategies;
-    if (req.user.role === "admin") {
-      strategies = db.prepare("SELECT * FROM strategies ORDER BY timestamp DESC").all();
-    } else {
-      strategies = db.prepare("SELECT * FROM strategies WHERE userId = ? ORDER BY timestamp DESC").all();
-    }
+    let strategies = req.user.role === "admin"
+      ? db.prepare("SELECT * FROM strategies ORDER BY timestamp DESC").all()
+      : db.prepare("SELECT * FROM strategies WHERE userId = ? ORDER BY timestamp DESC").all(req.user.id);
     res.json({ strategies });
   });
 
@@ -284,66 +213,31 @@ async function startServer() {
       const result = db.prepare(`
         INSERT INTO strategies (userId, negocio, ideia, publico, estilo, formatos, reportText, videoPrompt, narrationScript)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        req.user.id,
-        negocio,
-        ideia,
-        publico,
-        estilo,
-        JSON.stringify(formatos),
-        reportText,
-        videoPrompt,
-        narrationScript
-      );
+      `).run(req.user.id, negocio, ideia, publico, estilo, JSON.stringify(formatos), reportText, videoPrompt, narrationScript);
       res.json({ success: true, id: result.lastInsertRowid });
     } catch (err) {
-      console.error("Erro ao salvar estratégia:", err);
-      res.status(500).json({ error: "Falha ao salvar estratégia no histórico" });
+      res.status(500).json({ error: "Falha ao salvar estratégia" });
     }
   });
 
-  app.get("/api/strategies/:id", authenticate, (req: any, res) => {
-    const strategy = db.prepare("SELECT * FROM strategies WHERE id = ?").get(req.params.id);
-    if (!strategy) return res.status(404).json({ error: "Estratégia não encontrada" });
-    if (req.user.role !== "admin" && strategy.userId !== req.user.id) {
-      return res.status(403).json({ error: "Acesso negated" });
-    }
-    res.json({ strategy: { ...strategy, formatos: JSON.parse(strategy.formatos) } });
-  });
-
-  app.delete("/api/strategies/:id", authenticate, (req: any, res) => {
-    const strategy = db.prepare("SELECT * FROM strategies WHERE id = ?").get(req.params.id);
-    if (!strategy) return res.status(404).json({ error: "Estratégia não encontrada" });
-    if (req.user.role !== "admin" && strategy.userId !== req.user.id) {
-      return res.status(403).json({ error: "Acesso negado" });
-    }
-    db.prepare("DELETE FROM strategies WHERE id = ?").run(req.params.id);
-    res.json({ success: true });
-  });
-
-  // --- AI Server Proxy Endpoints ---
+  // --- AI API Endpoints ---
   app.post("/api/ai/generate-text", authenticate, async (req, res) => {
     const { model, prompt, systemInstruction } = req.body;
     try {
-      if (!prompt) throw new Error("Prompt is required");
       const vAI = getVertexAI();
       if (!vAI) throw new Error("Vertex AI is not initialized.");
-
-      const targetModel = model || "gemini-2.0-flash";
       const modelInstance = vAI.getGenerativeModel({
-        model: targetModel,
+        model: model || "gemini-2.0-flash",
         systemInstruction: systemInstruction || "Você é o Diretor de Criação da MASTER FUNIL."
       });
-
       const result = await modelInstance.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }]
       });
-
       const response = await result.response;
       res.json({ text: response.candidates?.[0]?.content?.parts?.[0]?.text });
     } catch (err: any) {
-      console.error("AI Generation Error:", err);
-      res.status(err.status || 500).json({ error: err.message });
+      console.error("AI Text Error:", err);
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -352,31 +246,28 @@ async function startServer() {
     try {
       const vAI = getVertexAI();
       if (!vAI) throw new Error("Vertex AI is not initialized.");
-
       const targetModel = model || "imagen-3.0-generate-001";
       const modelInstance = vAI.getGenerativeModel({ model: targetModel });
 
-      console.log(`[Vertex AI] Generating image for prompt: "${prompt.substring(0, 50)}..." Ratio: ${aspectRatio}`);
+      console.log(`[Vertex AI] Generating image. Ratio: ${aspectRatio}`);
 
       const result = await modelInstance.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
-          // @ts-ignore - Vertex specific properties
           aspectRatio: aspectRatio || "1:1",
         }
       });
 
       const response = await result.response;
       const part = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
-
       if (part?.inlineData?.data) {
         res.json({ data: part.inlineData.data });
       } else {
-        throw new Error("O modelo não retornou dados de imagem em Vertex AI.");
+        throw new Error("O modelo não retornou dados de imagem.");
       }
     } catch (err: any) {
-      console.error("AI Image Generation Error:", err);
-      res.status(err.status || 500).json({ error: err.message });
+      console.error("AI Image Error:", err);
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -385,9 +276,12 @@ async function startServer() {
     try {
       if (!prompt) throw new Error("Prompt is required");
 
+      const authOpts = getGoogleAuthOptions();
       const auth = new GoogleAuth({
         scopes: 'https://www.googleapis.com/auth/cloud-platform',
+        ...authOpts
       });
+
       const client = await auth.getClient();
       const projectId = process.env.GOOGLE_PROJECT_ID;
       const location = process.env.GOOGLE_LOCATION || 'us-central1';
@@ -401,8 +295,6 @@ async function startServer() {
         instances: [{ prompt: `${prompt}. MANDATORY: Respond ONLY in Portuguese (PT-BR). Style: Cinematic, 4k.` }]
       };
 
-      console.log(`[Vertex AI] Requesting Video LRO (REST) for ${targetModel}`);
-
       const restResp = await fetch(url, {
         method: 'POST',
         headers: {
@@ -413,161 +305,62 @@ async function startServer() {
       });
 
       const videoData = await restResp.json();
-      console.log("[Vertex AI] Video REST Response:", JSON.stringify(videoData));
-
       if (videoData.name) {
         res.json({ operationName: videoData.name });
       } else {
-        throw new Error(videoData.error?.message || "Erro ao iniciar operação de vídeo via REST.");
+        throw new Error(videoData.error?.message || "Erro ao iniciar operação de vídeo.");
       }
     } catch (err: any) {
-      console.error("AI Video Generation Error Details:", err);
+      console.error("AI Video Error:", err);
       res.status(500).json({ error: err.message });
     }
   });
 
-  // Endpoint 2: Polling de Status (Usa wildcard '*' para aceitar nomes com barras do Google)
   app.get("/api/ai/operation-status/*", authenticate, async (req, res) => {
     try {
       const vAI = getVertexAI();
       if (!vAI) throw new Error("Vertex AI is not initialized.");
       const operationName = req.params[0];
-
-      const operation: any = await (vertexAI as any).getOperation({
-        name: operationName
-      });
-
+      const operation: any = await (vertexAI as any).getOperation({ name: operationName });
       res.json({
         done: operation.done,
         videoUri: operation.response?.generatedVideos?.[0]?.video?.uri,
         error: operation.error
       });
     } catch (err: any) {
-      console.error("AI Video Status Error:", err);
-      res.status(err.status || 500).json({ error: err.message });
+      res.status(500).json({ error: err.message });
     }
   });
 
-  // Endpoint 3: Proxy de Vídeo para evitar CORS
   app.get("/api/ai/video-proxy", authenticate, async (req, res) => {
     const videoUrl = req.query.url as string;
     try {
       if (!videoUrl) throw new Error("URL é obrigatória");
       const videoRes = await fetch(videoUrl);
-      if (!videoRes.ok) throw new Error(`Falha ao buscar vídeo: ${videoRes.statusText}`);
+      if (!videoRes.ok) throw new Error(`Falha ao buscar vídeo`);
       res.setHeader("Content-Type", "video/mp4");
       const buffer = await videoRes.arrayBuffer();
       res.send(Buffer.from(buffer));
     } catch (err: any) {
-      console.error("Video Proxy Error:", err);
       res.status(500).send(err.message);
     }
   });
 
-  app.post("/api/ai/generate-audio", authenticate, async (req, res) => {
-    const { text, model } = req.body;
-    try {
-      const vAI = getVertexAI();
-      if (!vAI) throw new Error("Vertex AI is not initialized.");
-
-      const targetModel = model || "gemini-1.5-flash";
-      const modelInstance = vAI.getGenerativeModel({ model: targetModel });
-
-      const result = await modelInstance.generateContent({
-        contents: [{ role: 'user', parts: [{ text }] }],
-        generationConfig: {
-          // @ts-ignore - Vertex multi-modal properties
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } }
-          }
-        }
-      });
-
-      const response = await result.response;
-      const part = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
-
-      if (part?.inlineData?.data) {
-        res.json({ data: part.inlineData.data });
-      } else {
-        throw new Error("O modelo não retornou dados de áudio em Vertex AI.");
-      }
-    } catch (err: any) {
-      console.error("AI Audio Generation Error:", err);
-      res.status(err.status || 500).json({ error: err.message });
-    }
-  });
-
-  // --- Diagnostic & Debug Routes ---
-  app.get("/api/ai/debug-simple", authenticate, async (req, res) => {
-    try {
-      const vAI = getVertexAI();
-      if (!vAI) throw new Error("Vertex AI is not initialized.");
-      console.log("[AI-DEBUG] Testing simple generation with Vertex...");
-      const modelInstance = vAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const result = await modelInstance.generateContent({
-        contents: [{ role: 'user', parts: [{ text: "Diga 'Conexão Vertex OK' em português." }] }]
-      });
-      const response = await result.response;
-      res.json({ success: true, text: response.candidates?.[0]?.content?.parts?.[0]?.text });
-    } catch (err: any) {
-      console.error("[AI-DEBUG] Vertex test failed:", err);
-      res.status(err.status || 500).json({ error: err.message, details: err.stack });
-    }
-  });
-
-  // Handle unhandled rejections to prevent silent crashes
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  });
-
-  process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
-  });
-
-  // --- Vite Integration ---
+  // --- Production Serving ---
   if (process.env.NODE_ENV !== "production") {
-    console.log("Iniciando em modo DESENVOLVIMENTO (Vite Middleware)");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
+    const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
     app.use(vite.middlewares);
   } else {
-    console.log("Iniciando em modo PRODUÇÃO (Servindo pasta dist)");
     const distPath = path.join(__dirname, "dist");
-
     if (fs.existsSync(distPath)) {
       app.use(express.static(distPath));
-      app.get("*", (req, res) => {
-        const indexPath = path.join(distPath, "index.html");
-        if (fs.existsSync(indexPath)) {
-          res.sendFile(indexPath);
-        } else {
-          res.status(404).send("Erro de Build: index.html não encontrado na pasta dist. Verifique o comando npm run build.");
-        }
-      });
-    } else {
-      console.error("ERRO CRÍTICO: Pasta 'dist' não encontrada! O deploy vai falhar.");
-      app.get("*", (req, res) => {
-        res.status(500).send("Erro de Deploy: Pasta 'dist' não encontrada. O comando 'npm run build' pode ter falhado.");
-      });
+      app.get("*", (req, res) => res.sendFile(path.join(distPath, "index.html")));
     }
   }
 
-  // Erro Handler Global
-  app.use((err: any, req: any, res: any, next: any) => {
-    console.error("ERRO NO SERVIDOR:", err);
-    res.status(500).json({ error: "Erro interno no servidor", details: err.message });
-  });
-
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 MASTER FUNIL ON: http://0.0.0.0:${PORT}`);
-    console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
   });
 }
 
-startServer().catch(err => {
-  console.error("FALHA AO INICIAR O SERVIDOR:", err);
-  process.exit(1);
-});
+startServer();
