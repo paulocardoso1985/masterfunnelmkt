@@ -381,9 +381,8 @@ async function startServer() {
         modelInstance.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
-            // @ts-ignore - Imagen specific parameters
-            sampleCount: 1,
-            aspectRatio: aspectRatio || '1:1'
+            // aspectRatio is not supported in generationConfig for generateContent
+            // sampleCount: 1
           }
         }),
         timeoutPromise
