@@ -377,23 +377,25 @@ async function startServer() {
       // Timeout of 60 seconds
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: Imagem não gerada em 60 segundos.")), 60000));
 
+      // Simplified payload for Imagen 3
       const result = await Promise.race([
         modelInstance.generateContent({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            // aspectRatio is not supported in generationConfig for generateContent
-            // sampleCount: 1
-          }
+          contents: [{ role: 'user', parts: [{ text: prompt }] }]
+          // Removed generationConfig entirely for initial stability test
         }),
         timeoutPromise
       ]) as any;
 
       const response = await result.response;
+      console.log(`[Vertex AI] Image Response received:`, JSON.stringify(response).substring(0, 200));
+
       const part = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
       if (part?.inlineData?.data) {
         res.json({ data: part.inlineData.data });
       } else {
-        res.status(500).json({ error: "Falha ao gerar imagem: Dado binário não encontrado." });
+        // Log the full response to debug why it didn't return data
+        console.error("[Vertex AI] Image part missing inlineData. Full response:", JSON.stringify(response));
+        res.status(500).json({ error: "Falha ao gerar imagem: Dado binário não encontrado.", details: response });
       }
     } catch (err: any) {
       console.error("AI Image Generation Error Details:", {
@@ -424,14 +426,15 @@ async function startServer() {
 
       let operation: any;
       console.log(`[Vertex AI] Starting enterprise video generation (Model: ${targetModel})`);
+
+      // For Veo/Video, some SDK versions prefer specific methods
+      // We'll wrap in a try-catch to see if specialised methods exist
       const modelInstance = vAI.getGenerativeModel({ model: targetModel });
 
-      // For specialized models like Veo, we use a simpler generationConfig or none to avoid 400 errors
+      // As per user's "friend" and LRO requirements, we use a simple call
+      // and expect the SDK to handle the LRO or return an operation handle.
       const startPromise = modelInstance.generateContent({
-        contents: [{ role: 'user', parts: [{ text: professionalPrompt }] }],
-        generationConfig: {
-          // aspectRatio is not supported in generationConfig for generateContent on Veo
-        }
+        contents: [{ role: 'user', parts: [{ text: professionalPrompt }] }]
       });
 
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: O servidor de vídeo não respondeu em 60 segundos.")), 60000));
