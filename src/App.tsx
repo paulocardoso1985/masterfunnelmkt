@@ -1,7 +1,7 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
- * BUILD_TRIGGER: 2026-03-10_16:50
+ * BUILD_TRIGGER: 2026-03-11_15:40
  */
 
 import React, { useState, useEffect } from 'react';
@@ -48,7 +48,6 @@ function cn(...inputs: ClassValue[]) {
 }
 
 // --- Types ---
-// AI Studio global type removed
 
 interface User {
   id: number;
@@ -215,9 +214,6 @@ export default function App() {
     }
   };
 
-  // Helper to get AI instance (DEPRECATED - Moved to server)
-  // const getAI = () => { ... };
-
   const generateStrategy = async () => {
     const { negocio, ideia, publico, estilo, formatos, slidesCarrossel } = formData;
 
@@ -234,7 +230,6 @@ export default function App() {
     setStatus('Arquitetando narrativa de elite...');
     const textModel = "gemini-2.0-flash";
     try {
-      // Log usage
       const aspectRatioMap: Record<string, "1:1" | "9:16" | "16:9"> = {
         'Feed (Instagram/LinkedIn) - 1:1': '1:1',
         'Stories/Reels/TikTok - 9:16': '9:16',
@@ -248,44 +243,31 @@ Crie um ecossistema de marketing digital de ALTA PERFORMANCE e COMPLETAMENTE DET
 
 Ideia Central: ${ideia}
 Público-alvo: ${publico}
-Estilo de Comunicação: ${estilo} (Siga rigorosamente este estilo)
+Estilo de Comunicação & Visual: ${estilo} (Siga RIGOROSAMENTE este estilo em todos os textos e DESCRIÇÕES DE IMAGENS)
 Formatos Solicitados: ${formatos.join(', ')}
-${formatos.some(f => f.includes('Carrossel')) ? `- Slides por Carrossel: ${slidesCarrossel}` : ''}
+${formatos.some(f => f.includes('Carrossel')) ? `- Slides por Carrossel: ${slidesCarrossel} (Gere EXATAMENTE este número de prompts de imagem)` : ''}
 
 ESTRUTURA OBRIGATÓRIA DA RESPOSTA (NÃO PULE NENHUMA SEÇÃO):
 
 1. POSICIONAMENTO DE ELITE E PROPOSTA DE VALOR
-   - Defina o tom de voz e a autoridade da marca.
-   - Proposta Única de Valor (UVP) focada em High-End Corporate.
-
 2. ARQUITETURA DO FUNIL DE CONVERSÃO (DETALHADO)
-   - TOPO DE FUNIL (ToFu): Atração e consciência.
-   - MEIO DE FUNIL (MoFu): Desejo e qualificação.
-   - FUNDO DE FUNIL (BoFu): Escassez e conversão direta.
-
 3. MIX DE CANAIS ESTRATÉGICOS & PLANO DE TRÁFEGO PAGO
-   - Detalhe estratégias para LinkedIn Ads, Meta Ads e Google Search.
-   - Distribuição de verba e foco de ROI.
-
 4. CRONOGRAMA DE IMPACTO (PLANO DE AÇÃO DE 30 DIAS)
-   - Divida em fases: Teaser, Line-up, Tração e Escassez.
-
 5. ROTEIRO DE NARRAÇÃO PROFISSIONAL (MASTER)
-   - Texto completo para locução em PT-BR, com tom grave, compassado e de autoridade máxima.
+   - Texto completo para locução em PT-BR, com tom grave e autoridade máxima.
 
 REQUISITOS TÉCNICOS ADICIONAIS:
 1. IDIOMA: Todo o conteúdo (texto, labels, scripts e QUALQUER TEXTO DENTRO DAS IMAGENS) deve ser em PORTUGUÊS DO BRASIL (PT-BR) de altíssimo nível.
 2. ASSETS_PROMPTS: No final, adicione a seção "ASSETS_PROMPTS" com prompts cinematográficos para CADA formato solicitado.
 3. REGRAS PARA IMAGENS:
-   - Cada asset deve ser identificado como: [ASSET: Nome do Formato (Indique a Proporção 1:1 ou 9:16 ou 16:9 aqui) | PROMPT: Descrição em inglês, cinematográfica, focada no produto. MANDATORILY: Any text appearing inside the image MUST be in Brazilian Portuguese (PT-BR)].
-   - Para Carrosséis, gere prompts para os ${slidesCarrossel} slides: [ASSET: Nome do Carrossel - Slide X (Proporção) | PROMPT: ...].
+   - Cada asset deve ser identificado como: [ASSET: Nome do Formato (Indique a Proporção 1:1 ou 9:16 ou 16:9 aqui) | PROMPT: Descrição em inglês, cinematográfica, focada no produto, INCORPORANDO O ESTILO "${estilo}". MANDATORILY: Any text appearing inside the image MUST be in Brazilian Portuguese (PT-BR)].
+   - Para Carrosséis, gere prompts para EXATAMENTE ${slidesCarrossel} slides: [ASSET: Nome do Carrossel - Slide X (Proporção) | PROMPT: Estilo ${estilo}, ...].
 4. VÍDEO E ÁUDIO:
-   - [VIDEO_PROMPT: Descrição cinematográfica em inglês para vídeo de impacto de 8s. Any visible text MUST be in PT-BR].
+   - [VIDEO_PROMPT: Descrição cinematográfica em inglês para vídeo de impacto de 8s. Estilo ${estilo}. Any visible text MUST be in PT-BR].
    - [NARRATION_SCRIPT: Texto persuasivo em PT-BR para locução de 8s].
 
-IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade absoluta. Não seja sucinto. Seja completo e profissional.`;
+IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade absoluta.`;
 
-      // 1. Generate Strategy Text & Video Prompts (Now via Vertex AI)
       const textResponse = await fetch('/api/ai/generate-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -304,19 +286,16 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
       const textData = await textResponse.json();
       const fullText = textData.text || '';
 
-      // 2. Extract Prompts
       setStatus('Extraindo prompts e gerando visuais...');
-      // More robust regex to catch assets even with slight formatting variations
       const assetRegex = /\[ASSET:\s*(.*?)\s*\|?\s*PROMPT:\s*(.*?)\]/gs;
       const assetMatches = [...fullText.matchAll(assetRegex)];
 
       const videoMatch = fullText.match(/\[VIDEO_PROMPT: (.*?)\]/);
-      const videoPrompt = videoMatch ? videoMatch[1] : `Cinematic high-end commercial for ${negocio}, 4k, slow motion, professional lighting`;
+      const videoPrompt = videoMatch ? videoMatch[1] : `Cinematic high-end commercial for ${negocio}, 4k, style ${estilo}`;
 
       const narrationMatch = fullText.match(/\[NARRATION_SCRIPT: (.*?)\]/s);
       const narrationScript = narrationMatch ? narrationMatch[1] : '';
 
-      // 3. Generate Images (Sequential to avoid 429 Resource Exhausted)
       const imageModel = "gemini-2.5-flash-image";
       const generatedAssets = [];
 
@@ -327,10 +306,10 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
 
         setStatus(`Gerando asset ${i + 1} de ${assetMatches.length}: ${fullLabel}...`);
 
-        // Determine base type for aspect ratio
+        // Determine base type and ratio
         let baseType = fullLabel;
-        if (fullLabel.includes(' - Slide')) {
-          baseType = fullLabel.split(' - Slide')[0];
+        if (fullLabel.toLowerCase().includes(' - slide')) {
+          baseType = fullLabel.split(/ - [Ss]lide/i)[0];
         }
 
         let ratio: "1:1" | "9:16" | "16:9" = '16:9';
@@ -339,32 +318,24 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
         else if (fullLabel.includes('16:9')) ratio = '16:9';
         else ratio = aspectRatioMap[baseType] || '16:9';
 
-                // --- Ultra-Robust Alphanumeric Selection Filter ---
-        const normalizeStr = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const normBaseType = normalizeStr(baseType);
+        // --- Robust Filter ---
+        const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const normBaseType = normalize(baseType);
         const isMatched = formatos.some(f => {
-          const normF = normalizeStr(f.split(' - ')[0]);
+          const normF = normalize(f.split(' - ')[0]);
           return normBaseType.includes(normF) || normF.includes(normBaseType);
         });
-        console.log(`[DEBUG] Asset: "${fullLabel}" (Norm: ${normBaseType}) | Match: ${isMatched}`);
-        if (!isMatched) {
-          console.log(`Skipping asset generation (Filter active): ${fullLabel}`);
-          continue;
-        }
+
+        console.log(`[FILTER] Label: "${fullLabel}" | Match: ${isMatched}`);
+        if (!isMatched) continue;
 
         try {
           const res = await fetch('/api/ai/generate-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              prompt: p,
-              aspectRatio: ratio,
-              model: imageModel
-            })
+            body: JSON.stringify({ prompt: p, aspectRatio: ratio, model: imageModel })
           });
-
           if (!res.ok) throw new Error(`Imagem falhou (${res.status})`);
-
           const data = await res.json();
           if (data.data) {
             generatedAssets.push({
@@ -374,54 +345,34 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
               aspectRatio: ratio
             });
           }
-
-          // Small delay between requests to prevent rate limit confusion
-          if (i < assetMatches.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 800));
-          }
+          if (i < assetMatches.length - 1) await new Promise(resolve => setTimeout(resolve, 800));
         } catch (imgErr) {
           console.error(`Failed to generate asset: ${fullLabel}`, imgErr);
         }
       }
-      const cleanText = fullText.split('ASSETS_PROMPTS')[0].trim();
 
+      const cleanText = fullText.split('ASSETS_PROMPTS')[0].trim();
       setResult({
         text: cleanText,
         assets: generatedAssets,
-        videoPrompt: videoPrompt,
-        narrationScript: narrationScript
+        videoPrompt,
+        narrationScript
       });
       setStatus('');
 
-      // 4. Save to History
       try {
         await fetch('/api/strategies', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            negocio,
-            ideia,
-            publico,
-            estilo,
-            formatos,
-            reportText: cleanText,
-            videoPrompt,
-            narrationScript
+            negocio, ideia, publico, estilo, formatos,
+            reportText: cleanText, videoPrompt, narrationScript
           })
         });
-      } catch (err) {
-        console.error("Failed to save strategy to history");
-      }
+      } catch (err) { console.error("Failed to save history"); }
     } catch (err: any) {
-      console.error("DEBUG: Detailed Generation Error:", err);
-      // More specific error handling
-      if (err.status === 404) {
-        setError(`Modelo não encontrado (${textModel}). Por favor, verifique se o modelo está liberado para sua região.`);
-      } else if (err.status === 403 || err.status === 401) {
-        setError("Não Autorizado: Clique no botão 'Configurar Chave de API' e selecione uma chave válida (necessário para Vídeo/Imagem).");
-      } else {
-        setError(err.message || "Erro na geração. Verifique sua chave de API ou tente novamente.");
-      }
+      console.error("Gen Error:", err);
+      setError(err.message || "Erro na geração.");
     } finally {
       setLoading(false);
     }
@@ -429,108 +380,47 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
 
   const generateVideoAsset = async () => {
     if (!result?.videoPrompt) return;
-
+    setVideoLoading(true);
+    setVideoError(null);
+    setVideoProgress(0);
     try {
-      // 1. Inicia a Geração no Backend (Vertex AI)
       const startResp = await fetch('/api/ai/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: result.videoPrompt,
-          aspectRatio: videoAspectRatio
-        })
+        body: JSON.stringify({ prompt: result.videoPrompt, aspectRatio: videoAspectRatio })
       });
-
       if (!startResp.ok) {
-        let errData;
-        try {
-          errData = await startResp.json();
-        } catch (e) {
-          throw new Error(`Erro de rede (${startResp.status}). O servidor pode estar reiniciando.`);
-        }
-        throw new Error(errData.error || `Erro ao iniciar (${startResp.status})`);
+        const errData = await startResp.json();
+        throw new Error(errData.error || `Erro (${startResp.status})`);
       }
-
       const { operationName } = await startResp.json();
-      setStatus('Renderizando vídeo cinematográfico (Veo 3.1)...');
+      setStatus('Renderizando vídeo cinematográfico...');
 
-      // 2. Loop de Polling (Consulta a cada 5 segundos)
       let isDone = false;
       let attempts = 0;
-      const maxAttempts = 60; // Limite de 5 minutos
-
-      while (!isDone && attempts < maxAttempts) {
+      while (!isDone && attempts < 60) {
         attempts++;
-        await new Promise(r => setTimeout(r, 2000));
-
-        // Progresso visual mais rápido para o modelo FAST
-        setVideoProgress(prev => {
-          if (prev >= 98) return prev;
-          const inc = prev < 50 ? 15 : (prev < 80 ? 5 : 1);
-          return Math.min(98, prev + inc);
-        });
+        await new Promise(r => setTimeout(r, 4000));
+        setVideoProgress(prev => Math.min(98, prev + 5));
 
         const statusResp = await fetch(`/api/ai/operation-status/${operationName}`);
         if (!statusResp.ok) continue;
-
         const statusData = await statusResp.json();
 
         if (statusData.done) {
           isDone = true;
           if (statusData.videoUri) {
             setVideoProgress(100);
-            // Define o vídeo usando o endpoint de proxy para estabilidade e CORS
             setGeneratedVideo(`/api/ai/video-proxy?url=${encodeURIComponent(statusData.videoUri)}`);
-            setStatus('Vídeo gerado com sucesso!');
-          } else if (statusData.error) {
-            throw new Error(`IA Error: ${statusData.error.message || 'Falha na renderização'}`);
-          }
+            setStatus('Vídeo gerado!');
+          } else if (statusData.error) throw new Error(statusData.error.message || 'Falha');
         }
       }
-
-      if (!isDone) throw new Error("Tempo limite esgotado. Verifique o console da IA.");
-
+      if (!isDone) throw new Error("Tempo limite esgotado.");
     } catch (err: any) {
-      console.error("Video Generation Error:", err);
-      setVideoError(err.message || 'Erro desconhecido ao processar o vídeo');
+      setVideoError(err.message || 'Erro no vídeo');
     } finally {
       setVideoLoading(false);
-    }
-  };
-
-
-  const generateAudio = async () => {
-    if (!result?.narrationScript) return;
-
-    setAudioLoading(true);
-    setStatus('Gerando narração profissional em PT-BR...');
-
-    try {
-      const resp = await fetch('/api/ai/generate-audio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: result.narrationScript
-        })
-      });
-
-      if (!resp.ok) {
-        const errData = await resp.json();
-        throw new Error(errData.error || `Erro de servidor (${resp.status})`);
-      }
-
-      const data = await resp.json();
-      if (data.data) {
-        setGeneratedAudio(`data:audio/wav;base64,${data.data}`);
-      } else {
-        throw new Error("O servidor não retornou dados de áudio.");
-      }
-    } catch (err: any) {
-      console.error("Audio Generation Error:", err);
-      setError(`Falha ao gerar narração: ${err.message || 'Erro desconhecido'}`);
-    } finally {
-      setAudioLoading(false);
-      setStatus('');
     }
   };
 
@@ -545,48 +435,26 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
 
   const exportToPDF = async () => {
     if (!result) return;
-
     const element = document.querySelector('.strategy-doc') as HTMLElement;
     if (!element) return;
-
     setLoading(true);
-    setStatus('Gerando PDF de alta definição...');
-
+    setStatus('Gerando PDF...');
     try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      });
-
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgProps = pdf.getImageProperties(imgData);
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`estrategia-${formData.negocio.toLowerCase().replace(/\s+/g, '-')}.pdf`);
-    } catch (err) {
-      console.error('PDF Error:', err);
-      window.print(); // Fallback to browser print
-    } finally {
-      setLoading(false);
-      setStatus('');
-    }
+    } catch (err) { window.print(); } finally { setLoading(false); setStatus(''); }
   };
 
   const downloadVideo = () => {
     if (!generatedVideo) return;
     const link = document.createElement('a');
     link.href = generatedVideo;
-    link.download = `video-campanha-${formData.negocio.toLowerCase().replace(/\s+/g, '-')}.mp4`;
+    link.download = `video-campanha.mp4`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -600,952 +468,202 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
         const data = await res.json();
         setHistoryList(data.strategies);
       }
-    } catch (err) {
-      console.error("Failed to fetch history");
-    } finally {
-      setHistoryLoading(false);
-    }
+    } catch (err) { console.error("History fail"); } finally { setHistoryLoading(false); }
   };
 
   const loadFromHistory = async (id: number) => {
     setLoading(true);
-    setStatus('Recuperando estratégia do arquivo...');
     try {
       const res = await fetch(`/api/strategies/${id}`);
       if (res.ok) {
         const { strategy } = await res.json();
         setFormData({
-          negocio: strategy.negocio,
-          ideia: strategy.ideia,
-          publico: strategy.publico,
-          estilo: strategy.estilo,
-          formatos: strategy.formatos,
-          slidesCarrossel: 5 // Default
+          negocio: strategy.negocio, ideia: strategy.ideia, publico: strategy.publico,
+          estilo: strategy.estilo, formatos: strategy.formatos || [], slidesCarrossel: 5
         });
-
         setResult({
-          text: strategy.reportText,
-          assets: [], // As imagens não são salvas (muito grandes), o usuário deve re-gerar se necessário
-          videoPrompt: strategy.videoPrompt,
-          narrationScript: strategy.narrationScript
+          text: strategy.reportText, assets: [],
+          videoPrompt: strategy.videoPrompt, narrationScript: strategy.narrationScript
         });
-        setGeneratedVideo(null);
-        setGeneratedAudio(null);
         setShowHistory(false);
-        setShowAdmin(false);
       }
-    } catch (err) {
-      alert("Erro ao carregar do histórico");
-    } finally {
-      setLoading(false);
-      setStatus('');
-    }
+    } catch (err) { alert("Erro ao carregar"); } finally { setLoading(false); }
   };
 
   const deleteFromHistory = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
-    if (!confirm("Excluir esta estratégia do histórico?")) return;
+    if (!confirm("Excluir?")) return;
     try {
       const res = await fetch(`/api/strategies/${id}`, { method: 'DELETE' });
       if (res.ok) fetchHistory();
-    } catch (err) {
-      alert("Erro ao excluir do histórico");
-    }
+    } catch (err) { alert("Erro ao excluir"); }
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <Loader2 className="text-[#f58f2a] animate-spin" size={48} />
-      </div>
-    );
-  }
+  if (authLoading) return <div className="min-h-screen bg-[#050505] flex items-center justify-center"><Loader2 className="text-[#f58f2a] animate-spin" size={48} /></div>;
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#050505] text-white font-sans flex items-center justify-center p-6">
+      <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-6">
         <div className="w-full max-w-md space-y-8">
-          <div className="text-center space-y-4">
-            <div className="flex justify-center mb-6">
-              <img
-                src="https://maiscorporativo.tur.br/wp-content/uploads/2025/02/Logo-azul-png.png"
-                alt="Logo"
-                className="h-16 object-contain"
-              />
-            </div>
+          <div className="text-center">
             <h1 className="text-3xl font-bold tracking-tighter uppercase">MASTER FUNNEL</h1>
-            <p className="text-xs font-bold tracking-[0.4em] text-[#f58f2a] uppercase">Acesso Restrito MAIS Corporativo</p>
+            <p className="text-xs font-bold tracking-[0.4em] text-[#f58f2a] uppercase">MAIS Corporativo</p>
           </div>
-
-          <form onSubmit={handleLogin} className="bg-[#0c2444] p-8 rounded-[32px] border border-white/5 shadow-2xl space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-widest font-bold text-white/40">E-mail Corporativo</label>
-              <input
-                type="email"
-                required
-                value={loginData.email}
-                onChange={e => setLoginData({ ...loginData, email: e.target.value })}
-                className="w-full bg-white/5 border-b border-white/10 py-3 focus:border-[#f58f2a] outline-none transition-all"
-                placeholder="seu@email.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-widest font-bold text-white/40">Senha de Acesso</label>
-              <input
-                type="password"
-                required
-                value={loginData.password}
-                onChange={e => setLoginData({ ...loginData, password: e.target.value })}
-                className="w-full bg-white/5 border-b border-white/10 py-3 focus:border-[#f58f2a] outline-none transition-all"
-                placeholder="••••••••"
-              />
-            </div>
-
-            {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-[10px] uppercase font-bold text-center">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 bg-[#f58f2a] text-white rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-[#f15424] transition-all flex items-center justify-center gap-2"
-            >
-              {loading ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />}
-              Entrar no Sistema
+          <form onSubmit={handleLogin} className="bg-[#0c2444] p-8 rounded-[32px] border border-white/5 space-y-6">
+            <input type="email" required placeholder="E-mail" value={loginData.email} onChange={e => setLoginData({ ...loginData, email: e.target.value })} className="w-full bg-white/5 border-b border-white/10 py-3 focus:border-[#f58f2a] outline-none transition-all" />
+            <input type="password" required placeholder="Senha" value={loginData.password} onChange={e => setLoginData({ ...loginData, password: e.target.value })} className="w-full bg-white/5 border-b border-white/10 py-3 focus:border-[#f58f2a] outline-none transition-all" />
+            {error && <div className="text-red-400 text-xs text-center">{error}</div>}
+            <button type="submit" disabled={loading} className="w-full py-4 bg-[#f58f2a] text-white rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-[#f15424] flex items-center justify-center gap-2">
+              {loading ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} Entrar
             </button>
           </form>
-
-          <p className="text-center text-[10px] text-white/20 uppercase tracking-widest">
-            Uso exclusivo para colaboradores autorizados.
-          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#f58f2a] selection:text-white print:bg-white print:text-black lg:pl-20">
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        @media print {
-          body { background: white !important; color: black !important; }
-          aside, header, footer, section, .xl\\:col-span-4, button, .print\\:hidden {
-            display: none !important;
-          }
-          main { padding: 0 !important; margin: 0 !important; max-width: none !important; }
-          .xl\\:col-span-8 {
-            width: 100% !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          .strategy-doc {
-            display: block !important;
-            box-shadow: none !important;
-            border: none !important;
-            padding: 2rem !important;
-            color: black !important;
-            background: white !important;
-          }
-          .strategy-doc * {
-            color: black !important;
-          }
-          .prose { max-width: none !important; }
-        }
-      `}} />
-      {/* Sidebar Navigation (Desktop) */}
+    <div className="min-h-screen bg-[#050505] text-white font-sans lg:pl-20">
       <aside className="fixed left-0 top-0 h-full w-20 bg-[#0c2444] border-r border-white/5 flex flex-col items-center py-8 gap-8 z-50 hidden lg:flex">
-        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20 overflow-hidden p-2 border border-white/10">
-          <img
-            src="https://maiscorporativo.tur.br/wp-content/uploads/2025/02/Logo-azul-png.png"
-            alt="Logo"
-            className="w-full h-full object-contain"
-          />
-        </div>
+        <Rocket className="text-[#f58f2a]" size={32} />
         <nav className="flex flex-col gap-6">
-          <button
-            onClick={() => { setResult(null); setShowAdmin(false); }}
-            className={cn("p-3 rounded-xl transition-all", !result && !showAdmin ? "bg-[#f58f2a] text-white" : "hover:bg-white/5 text-white/40")}
-            title="Nova Estratégia"
-          >
-            <Monitor size={20} />
-          </button>
-          <button
-            onClick={() => { if (result) setShowAdmin(false); setShowHistory(false); }}
-            className={cn("p-3 rounded-xl transition-all", result && !showAdmin && !showHistory ? "bg-[#f58f2a] text-white" : "hover:bg-white/5 text-white/40")}
-            title="Ver Resultado Atual"
-          >
-            <Layers size={20} />
-          </button>
-          <button
-            onClick={() => { setShowHistory(true); setShowAdmin(false); fetchHistory(); }}
-            className={cn("p-3 rounded-xl transition-all", showHistory ? "bg-[#f58f2a] text-white" : "hover:bg-white/5 text-white/40")}
-            title="Histórico de Estratégias"
-          >
-            <History size={20} />
-          </button>
-          <button
-            onClick={() => { setShowAdmin(true); fetchLogs(); }}
-            className={cn("p-3 rounded-xl transition-all", showAdmin ? "bg-[#f58f2a] text-white" : "hover:bg-white/5 text-white/40")}
-            title="Administração"
-          >
-            <Sparkles size={20} />
-          </button>
-          <button
-            onClick={exportToPDF}
-            className="p-3 rounded-xl hover:bg-white/5 text-white/40 transition-colors"
-            title="Exportar PDF"
-          >
-            <FileText size={20} />
-          </button>
+          <button onClick={() => { setResult(null); setShowAdmin(false); setShowHistory(false); }} className={cn("p-3 rounded-xl", !result && !showAdmin && !showHistory ? "bg-[#f58f2a]" : "text-white/40")}><Monitor size={20} /></button>
+          <button onClick={() => setShowHistory(true)} className={cn("p-3 rounded-xl", showHistory ? "bg-[#f58f2a]" : "text-white/40")}><History size={20} /></button>
+          <button onClick={handleLogout} className="p-3 rounded-xl text-white/40 hover:text-red-400"><LogOut size={20} /></button>
         </nav>
       </aside>
 
       <header className="h-20 border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl sticky top-0 z-40 px-8 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <img
-            src="https://maiscorporativo.tur.br/wp-content/uploads/2025/02/Logo-azul-png.png"
-            alt="Logo"
-            className="h-10 object-contain"
-          />
-          <div className="h-8 w-px bg-white/10 hidden sm:block" />
-          <div className="flex flex-col">
-            <h1 className="text-lg font-bold tracking-tighter uppercase leading-none">MASTER FUNNEL</h1>
-            <p className="text-[10px] font-bold tracking-[0.3em] text-[#f58f2a] uppercase leading-none mt-1">MAIS MARKETING</p>
-          </div>
+        <div className="flex flex-col">
+          <h1 className="text-lg font-bold tracking-tighter uppercase leading-none">MASTER FUNNEL</h1>
+          <p className="text-[10px] font-bold tracking-[0.3em] text-[#f58f2a] uppercase leading-none mt-1">MAIS MARKETING</p>
         </div>
         <div className="flex items-center gap-4">
-          {result && (
-            <button
-              onClick={() => {
-                setResult(null); setGeneratedVideo(null); setFormData({
-                  negocio: '',
-                  ideia: '',
-                  publico: '',
-                  estilo: 'Profissional',
-                  formatos: ['Feed (Instagram/LinkedIn) - 1:1'],
-                  slidesCarrossel: 5
-                });
-              }}
-              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[#f58f2a] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-[#f15424] transition-all shadow-lg shadow-orange-500/20"
-            >
-              <RefreshCw size={14} /> Nova Estratégia
-            </button>
-          )}
-          <div className="hidden lg:flex flex-col items-end mr-4">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Bem-vindo,</span>
-            <span className="text-xs font-bold text-[#f58f2a]">{user.name}</span>
-          </div>
-          {user.role === 'admin' && (
-            <button
-              onClick={() => {
-                setShowAdmin(!showAdmin);
-                if (!showAdmin) fetchLogs();
-              }}
-              className={cn(
-                "p-2 rounded-xl border transition-all",
-                showAdmin ? "bg-[#f58f2a] border-[#f58f2a] text-white" : "bg-white/5 border-white/10 text-white/40 hover:text-white"
-              )}
-              title="Monitoramento de Uso"
-            >
-              <FileText size={20} />
-            </button>
-          )}
-          <button
-            onClick={handleLogout}
-            className="p-2 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-red-500/20 hover:border-red-500/20 transition-all"
-            title="Sair do Sistema"
-          >
-            <ArrowRight size={20} />
-          </button>
+          <span className="text-xs font-bold text-[#f58f2a]">{user.name}</span>
+          <button onClick={handleLogout} className="p-2 rounded-xl bg-white/5"><PowerOff size={16} /></button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-8 lg:p-12">
+      <main className="max-w-7xl mx-auto p-8">
         {showHistory ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-8"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-3xl font-serif italic">Histórico de Estratégias</h2>
-              <button
-                onClick={fetchHistory}
-                disabled={historyLoading}
-                className="p-2 bg-white/5 rounded-xl text-white/40 hover:text-white transition-colors"
-              >
-                <RefreshCw size={20} className={cn(historyLoading && "animate-spin")} />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {historyList.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => loadFromHistory(item.id)}
-                  className="group bg-[#0c2444] p-6 rounded-[32px] border border-white/5 hover:border-[#f58f2a]/30 transition-all cursor-pointer relative overflow-hidden"
-                >
-                  <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => deleteFromHistory(e, item.id)}
-                      className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-all"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-[#f58f2a]/10 rounded-xl flex items-center justify-center text-[#f58f2a]">
-                        <Target size={20} />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-widest font-bold text-white/40">Negócio</span>
-                        <span className="font-bold text-sm line-clamp-1">{item.negocio}</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-white/5">
-                      <p className="text-xs text-white/60 line-clamp-2 italic mb-4">
-                        "{item.ideia}"
-                      </p>
-                      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-white/30">
-                        <span>{new Date(item.timestamp).toLocaleDateString('pt-BR')}</span>
-                        <span className="text-[#f58f2a] opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                          Abrir <ArrowRight size={12} />
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+          <div className="space-y-8">
+            <h2 className="text-3xl font-serif italic">Histórico</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {historyList.map(h => (
+                <div key={h.id} onClick={() => loadFromHistory(h.id)} className="bg-[#0c2444] p-6 rounded-[32px] border border-white/5 cursor-pointer hover:border-[#f58f2a]/50">
+                  <p className="font-bold">{h.negocio}</p>
+                  <p className="text-xs text-white/40">{new Date(h.timestamp).toLocaleDateString()}</p>
                 </div>
               ))}
-
-              {historyList.length === 0 && !historyLoading && (
-                <div className="col-span-full py-20 text-center space-y-4">
-                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto text-white/10">
-                    <History size={32} />
-                  </div>
-                  <p className="text-white/20 uppercase tracking-[0.2em] font-bold text-xs">Nenhuma estratégia salva ainda.</p>
-                </div>
-              )}
             </div>
-          </motion.div>
-        ) : showAdmin ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-8"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-8">
-                <h2 className="text-3xl font-serif italic">Administração</h2>
-                <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
-                  <button
-                    onClick={() => setAdminTab('logs')}
-                    className={cn(
-                      "px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
-                      adminTab === 'logs' ? "bg-[#f58f2a] text-white" : "text-white/40 hover:text-white"
-                    )}
-                  >
-                    Logs de Uso
-                  </button>
-                  <button
-                    onClick={() => {
-                      setAdminTab('users');
-                      fetchUsers();
-                    }}
-                    className={cn(
-                      "px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
-                      adminTab === 'users' ? "bg-[#f58f2a] text-white" : "text-white/40 hover:text-white"
-                    )}
-                  >
-                    Gerenciar Usuários
-                  </button>
-                </div>
-              </div>
-              <button
-                onClick={() => adminTab === 'logs' ? fetchLogs() : fetchUsers()}
-                className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
-              >
-                Atualizar
-              </button>
-            </div>
-
-            {adminTab === 'logs' ? (
-              <div className="bg-[#0c2444] rounded-[32px] border border-white/5 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="border-b border-white/5 bg-white/5">
-                        <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Usuário</th>
-                        <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Ação</th>
-                        <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Parâmetros</th>
-                        <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Data/Hora</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {adminLogs.map((log, i) => (
-                        <tr key={i} className="hover:bg-white/[0.02] transition-colors">
-                          <td className="p-6">
-                            <div className="flex flex-col">
-                              <span className="font-bold text-sm">{log.userName}</span>
-                              <span className="text-[10px] text-white/40">{log.userEmail}</span>
-                            </div>
-                          </td>
-                          <td className="p-6">
-                            <span className="px-2 py-1 bg-green-500/10 text-green-400 rounded text-[10px] font-bold uppercase tracking-widest">
-                              {log.action}
-                            </span>
-                          </td>
-                          <td className="p-6">
-                            <div className="text-[10px] text-white/60 space-y-1">
-                              <p><strong className="text-white/80">Negócio:</strong> {log.params.negocio}</p>
-                              <p><strong className="text-white/80">Ideia:</strong> {log.params.ideia?.substring(0, 50)}...</p>
-                            </div>
-                          </td>
-                          <td className="p-6 text-xs text-white/40">
-                            {new Date(log.timestamp).toLocaleString('pt-BR')}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1">
-                  <form onSubmit={handleAddUser} className="bg-[#0c2444] p-8 rounded-[32px] border border-white/5 space-y-6">
-                    <h3 className="text-xl font-serif italic">Novo Usuário</h3>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase tracking-widest font-bold text-white/40">Nome Completo</label>
-                        <input
-                          type="text"
-                          required
-                          value={newUser.name}
-                          onChange={e => setNewUser({ ...newUser, name: e.target.value })}
-                          className="w-full bg-white/5 border-b border-white/10 py-2 focus:border-[#f58f2a] outline-none transition-all text-sm"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase tracking-widest font-bold text-white/40">E-mail</label>
-                        <input
-                          type="email"
-                          required
-                          value={newUser.email}
-                          onChange={e => setNewUser({ ...newUser, email: e.target.value })}
-                          className="w-full bg-white/5 border-b border-white/10 py-2 focus:border-[#f58f2a] outline-none transition-all text-sm"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase tracking-widest font-bold text-white/40">Senha</label>
-                        <input
-                          type="password"
-                          required
-                          value={newUser.password}
-                          onChange={e => setNewUser({ ...newUser, password: e.target.value })}
-                          className="w-full bg-white/5 border-b border-white/10 py-2 focus:border-[#f58f2a] outline-none transition-all text-sm"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] uppercase tracking-widest font-bold text-white/40">Cargo</label>
-                        <select
-                          value={newUser.role}
-                          onChange={e => setNewUser({ ...newUser, role: e.target.value })}
-                          className="w-full bg-white/5 border-b border-white/10 py-2 focus:border-[#f58f2a] outline-none transition-all text-sm"
-                        >
-                          <option value="user" className="bg-[#0c2444]">Usuário Padrão</option>
-                          <option value="admin" className="bg-[#0c2444]">Administrador</option>
-                        </select>
-                      </div>
-                    </div>
-                    <button
-                      type="submit"
-                      className="w-full py-3 bg-[#f58f2a] text-white rounded-xl font-bold uppercase tracking-widest text-[10px] hover:bg-[#f15424] transition-all"
-                    >
-                      Cadastrar Usuário
-                    </button>
-                  </form>
-                </div>
-
-                <div className="lg:col-span-2">
-                  <div className="bg-[#0c2444] rounded-[32px] border border-white/5 overflow-hidden">
-                    <table className="w-full text-left">
-                      <thead>
-                        <tr className="border-b border-white/5 bg-white/5">
-                          <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Usuário</th>
-                          <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Nível</th>
-                          <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40 text-right">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {adminUsers.map((u) => (
-                          <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="p-6">
-                              <div className="flex flex-col">
-                                <span className="font-bold text-sm">{u.name}</span>
-                                <span className="text-[10px] text-white/40">{u.email}</span>
-                              </div>
-                            </td>
-                            <td className="p-6">
-                              <span className={cn(
-                                "px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest",
-                                u.role === 'admin' ? "bg-[#f58f2a]/10 text-[#f58f2a]" : "bg-white/10 text-white/60"
-                              )}>
-                                {u.role}
-                              </span>
-                            </td>
-                            <td className="p-6 text-right">
-                              {u.id !== user.id && (
-                                <button
-                                  onClick={() => handleDeleteUser(u.id)}
-                                  className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                                >
-                                  Excluir
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-          </motion.div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-12">
-            {/* Left: Input Panel */}
             <div className="xl:col-span-4 space-y-8">
-              <section className="bg-[#0c2444] p-8 rounded-[32px] border border-white/5 shadow-2xl relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Sparkles size={48} />
-                </div>
-
+              <section className="bg-[#0c2444] p-8 rounded-[32px] border border-white/5 shadow-2xl">
                 <h2 className="text-2xl font-serif italic mb-8">Nova Estratégia</h2>
-
                 <div className="space-y-8">
-                  <div className="space-y-3">
-                    <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/40 flex items-center gap-2">
-                      <Target size={14} className="text-[#f58f2a]" /> Nome do Negócio
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.negocio}
-                      onChange={e => setFormData({ ...formData, negocio: e.target.value })}
-                      placeholder="Ex: MAIS Corporativo"
-                      className="w-full bg-white/5 border-b border-white/10 py-3 focus:border-[#f58f2a] outline-none transition-all font-medium text-lg placeholder:text-white/10"
-                    />
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-white/40">Negócio</label>
+                    <input value={formData.negocio} onChange={e => setFormData({ ...formData, negocio: e.target.value })} className="w-full bg-white/5 border-b border-white/10 py-2 focus:border-[#f58f2a] outline-none" placeholder="Ex: Master Funnel" />
                   </div>
-
-                  <div className="space-y-3">
-                    <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/40 flex items-center gap-2">
-                      <Lightbulb size={14} className="text-[#f58f2a]" /> Ideia Central
-                    </label>
-                    <textarea
-                      value={formData.ideia}
-                      onChange={e => setFormData({ ...formData, ideia: e.target.value })}
-                      placeholder="Qual o objetivo desta campanha?"
-                      rows={4}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 focus:border-[#f58f2a] outline-none transition-all font-medium resize-none placeholder:text-white/10"
-                    />
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase tracking-widest text-white/40">Ideia</label>
+                    <textarea value={formData.ideia} onChange={e => setFormData({ ...formData, ideia: e.target.value })} className="w-full bg-white/5 border rounded-xl p-4 focus:border-[#f58f2a] outline-none resize-none" rows={3} placeholder="Descreva sua ideia..." />
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3 relative group/style">
-                      <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/40 flex items-center gap-2 cursor-help">
-                        <Palette size={14} className="text-[#f58f2a]" /> Estilo
-                      </label>
-                      <div className="absolute bottom-full left-0 mb-2 w-64 p-4 bg-[#14244c] border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-hover/style:opacity-100 group-hover/style:visible transition-all z-50 pointer-events-none">
-                        <p className="text-[10px] font-bold text-[#f58f2a] uppercase tracking-widest mb-2">Guia de Estilos</p>
-                        <ul className="space-y-2 text-[11px] leading-relaxed text-white/70">
-                          <li><strong className="text-white">Profissional:</strong> Credibilidade e sobriedade para o mercado corporativo.</li>
-                          <li><strong className="text-white">Brutalista:</strong> Design cru, disruptivo e artístico para marcas modernas.</li>
-                          <li><strong className="text-white">Minimalista:</strong> Foco total na ideia com sofisticação e clareza.</li>
-                          <li><strong className="text-white">Energético:</strong> Cores vibrantes e movimento para capturar atenção rápida.</li>
-                        </ul>
-                      </div>
-                      <select
-                        value={formData.estilo}
-                        onChange={e => setFormData({ ...formData, estilo: e.target.value })}
-                        className="w-full bg-white/5 border-b border-white/10 py-2 focus:border-[#f58f2a] outline-none transition-all font-medium cursor-pointer"
-                      >
-                        <option className="bg-[#0c2444]">Profissional</option>
-                        <option className="bg-[#0c2444]">Brutalista</option>
-                        <option className="bg-[#0c2444]">Minimalista</option>
-                        <option className="bg-[#0c2444]">Energético</option>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest text-white/40">Estilo</label>
+                      <select value={formData.estilo} onChange={e => setFormData({ ...formData, estilo: e.target.value })} className="w-full bg-white/5 border-b border-white/10 py-2 outline-none">
+                        <option>Profissional</option><option>Brutalista</option><option>Minimalista</option><option>Energético</option>
                       </select>
                     </div>
-                    <div className="space-y-3">
-                      <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/40 flex items-center gap-2">
-                        <Target size={14} className="text-[#f58f2a]" /> Público
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.publico}
-                        onChange={e => setFormData({ ...formData, publico: e.target.value })}
-                        placeholder="Ex: B2B"
-                        className="w-full bg-white/5 border-b border-white/10 py-2 focus:border-[#f58f2a] outline-none transition-all font-medium placeholder:text-white/10"
-                      />
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest text-white/40">Público</label>
+                      <input value={formData.publico} onChange={e => setFormData({ ...formData, publico: e.target.value })} className="w-full bg-white/5 border-b border-white/10 py-2 outline-none" placeholder="Ex: B2B" />
                     </div>
                   </div>
-
-                  <div className="space-y-3">
-                    <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/40 flex items-center gap-2">
-                      <Monitor size={14} className="text-[#f58f2a]" /> Formatos dos Assets
-                    </label>
-                    <div className="grid grid-cols-1 gap-3 bg-white/5 p-4 rounded-2xl border border-white/10">
-                      {[
-                        'Feed (Instagram/LinkedIn) - 1:1',
-                        'Stories/Reels/TikTok - 9:16',
-                        'Banner/YouTube/Site - 16:9',
-                        'Carrossel para Feed - 1:1',
-                        'Carrossel para Story - 9:16'
-                      ].map((fmt) => (
-                        <label key={fmt} className="flex items-center gap-3 cursor-pointer group">
-                          <input
-                            type="checkbox"
-                            checked={formData.formatos.includes(fmt)}
-                            onChange={(e) => {
-                              const newFormatos = e.target.checked
-                                ? [...formData.formatos, fmt]
-                                : formData.formatos.filter(f => f !== fmt);
-                              setFormData({ ...formData, formatos: newFormatos });
-                            }}
-                            className="w-4 h-4 rounded border-white/20 bg-transparent text-[#f58f2a] focus:ring-[#f58f2a] transition-all"
-                          />
-                          <span className="text-xs font-medium text-white/60 group-hover:text-white transition-colors">{fmt}</span>
-                        </label>
+                  <div className="space-y-4">
+                    <label className="text-[10px] uppercase tracking-widest text-white/40">Formatos</label>
+                    <div className="space-y-2 bg-white/5 p-4 rounded-xl">
+                      {['Feed (Instagram/LinkedIn) - 1:1', 'Stories/Reels/TikTok - 9:16', 'Banner/YouTube/Site - 16:9', 'Carrossel para Feed - 1:1', 'Carrossel para Story - 9:16'].map(fmt => (
+                        <label key={fmt} className="flex items-center gap-3 cursor-pointer"><input type="checkbox" checked={formData.formatos.includes(fmt)} onChange={e => {
+                          const list = e.target.checked ? [...formData.formatos, fmt] : formData.formatos.filter(x => x !== fmt);
+                          setFormData({ ...formData, formatos: list });
+                        }} className="rounded border-white/20 text-[#f58f2a]" /> <span className="text-xs text-white/60">{fmt}</span></label>
                       ))}
                     </div>
                   </div>
-
-                  <AnimatePresence>
-                    {formData.formatos.some(f => f.includes('Carrossel')) && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="space-y-3 overflow-hidden"
-                      >
-                        <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/40 flex items-center gap-2">
-                          <Layers size={14} className="text-[#f58f2a]" /> Slides do Carrossel ({formData.slidesCarrossel})
-                        </label>
-                        <input
-                          type="range"
-                          min="3"
-                          max="10"
-                          value={formData.slidesCarrossel}
-                          onChange={(e) => setFormData({ ...formData, slidesCarrossel: parseInt(e.target.value) })}
-                          className="w-full h-2 bg-white/5 rounded-lg appearance-none cursor-pointer accent-[#f58f2a]"
-                        />
-                        <div className="flex justify-between text-[10px] font-bold text-white/20 uppercase tracking-widest">
-                          <span>3 Slides</span>
-                          <span>10 Slides</span>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <button
-                    onClick={generateStrategy}
-                    disabled={loading}
-                    className={cn(
-                      "w-full py-5 rounded-2xl font-bold uppercase tracking-[0.2em] text-xs transition-all flex items-center justify-center gap-3 shadow-xl",
-                      loading
-                        ? "bg-white/5 text-white/20 cursor-not-allowed"
-                        : "bg-[#f58f2a] text-white hover:bg-[#f15424] active:scale-95 shadow-orange-500/20"
-                    )}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="animate-spin" size={18} />
-                        {status || 'Processando...'}
-                      </>
-                    ) : (
-                      <>
-                        Gerar Ecossistema <ArrowRight size={18} />
-                      </>
-                    )}
-                  </button>
-
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400 text-xs"
-                    >
-                      <AlertCircle size={16} />
-                      {error}
-                    </motion.div>
+                  {formData.formatos.some(f => f.includes('Carrossel')) && (
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest text-white/40">Slides: {formData.slidesCarrossel}</label>
+                      <input type="range" min="3" max="10" value={formData.slidesCarrossel} onChange={e => setFormData({ ...formData, slidesCarrossel: parseInt(e.target.value) })} className="w-full accent-[#f58f2a]" />
+                    </div>
                   )}
+                  <button onClick={generateStrategy} disabled={loading} className="w-full py-4 bg-[#f58f2a] text-white rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-[#f15424] flex items-center justify-center gap-2">
+                    {loading ? <Loader2 className="animate-spin" size={16} /> : <Rocket size={16} />} {loading ? status : 'Gerar Ecossistema'}
+                  </button>
+                  {error && <div className="text-red-400 text-xs text-center bg-red-500/10 p-4 rounded-xl">{error}</div>}
                 </div>
               </section>
-
-              {/* Stats / Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-6 bg-white/5 border border-white/10 rounded-[24px]">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-white/40 mb-1">Modelos</p>
-                  <p className="text-sm font-bold">Gemini 3.1 Pro</p>
-                </div>
-                <div className="p-6 bg-white/5 border border-white/10 rounded-[24px]">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-white/40 mb-1">Assets</p>
-                  <p className="text-sm font-bold">Imagen 3 & Veo</p>
-                </div>
-              </div>
             </div>
 
-            {/* Right: Results Panel */}
             <div className="xl:col-span-8 space-y-12">
-              <AnimatePresence mode="wait">
-                {!result && !loading && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="h-full min-h-[600px] border border-white/5 bg-white/[0.02] rounded-[48px] flex flex-col items-center justify-center text-center p-12"
-                  >
-                    <div className="w-24 h-24 bg-[#0c2444] rounded-3xl flex items-center justify-center mb-8 shadow-2xl">
-                      <ImageIcon className="text-[#f58f2a] w-10 h-10" />
-                    </div>
-                    <h3 className="text-3xl font-serif italic mb-4">Aguardando Comando</h3>
-                    <p className="text-white/30 max-w-md leading-relaxed">
-                      Insira os parâmetros da sua campanha para que nossa IA arquitete um funil de vendas completo com visuais cinematográficos.
-                    </p>
-                  </motion.div>
-                )}
-
-                {loading && !result && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="h-full min-h-[600px] flex flex-col items-center justify-center space-y-12"
-                  >
-                    <div className="relative">
-                      <div className="w-32 h-32 border-2 border-white/5 rounded-full" />
-                      <div className="w-32 h-32 border-2 border-t-[#f58f2a] rounded-full animate-spin absolute top-0" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Rocket className="text-[#f58f2a] animate-pulse" size={32} />
-                      </div>
-                    </div>
-                    <div className="text-center space-y-3">
-                      <p className="font-bold uppercase tracking-[0.3em] text-xs text-[#f58f2a]">{status}</p>
-                      <p className="text-[10px] text-white/20 uppercase tracking-widest">Otimizando conversão via IA...</p>
-                    </div>
-                  </motion.div>
-                )}
-
-                {result && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-12"
-                  >
-                    {/* Visual Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      {result.assets.map((asset, idx) => (
-                        <div key={idx} className={cn(
-                          "group relative rounded-[32px] overflow-hidden border border-white/5 bg-white/5",
-                          asset.aspectRatio === '1:1' ? 'aspect-square' :
-                            asset.aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-video'
-                        )}>
-                          <img
-                            src={asset.url}
-                            alt={asset.tipo}
-                            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                            referrerPolicy="no-referrer"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-0 group-hover:opacity-60 transition-opacity flex items-end p-6">
-                            <button
-                              onClick={() => downloadImage(asset.url, `asset-${idx + 1}-${formData.negocio.toLowerCase().replace(/\s+/g, '-')}`)}
-                              className="bg-white text-[#0c2444] p-3 rounded-full hover:bg-[#f58f2a] hover:text-white transition-all shadow-xl"
-                            >
-                              <Download size={20} />
-                            </button>
-                          </div>
-                          <div className="absolute bottom-6 left-6">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#f58f2a]">{asset.label || asset.tipo}</p>
-                          </div>
-                        </div>
-                      ))}
-
-                      {/* Video Asset Section */}
-                      <div className="md:col-span-2 bg-[#0c2444] rounded-[40px] p-10 border border-white/5 relative overflow-hidden">
-                        <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
-                          <div className="flex-1 space-y-4">
-                            <div className="flex items-center gap-3 text-[#f58f2a]">
-                              <Video size={20} />
-                              <span className="text-xs font-bold uppercase tracking-widest">Asset Cinematográfico</span>
-                            </div>
-                            <h3 className="text-3xl font-serif italic">Preview em Vídeo</h3>
-                            <p className="text-sm text-white/60 leading-relaxed italic">
-                              "{result.videoPrompt}"
-                            </p>
-
-                            {/* Seletor de Formato (Aspect Ratio) */}
-                            <div className="flex flex-col gap-3 py-2">
-                              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f58f2a]">Formato do Vídeo</span>
-                              <div className="flex items-center gap-4">
-                                <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
-                                  <button
-                                    onClick={() => setVideoAspectRatio('16:9')}
-                                    className={cn(
-                                      "px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
-                                      videoAspectRatio === '16:9' ? "bg-white text-[#0c2444] shadow-lg" : "text-white/40 hover:text-white"
-                                    )}
-                                  >
-                                    Horizontal (16:9)
-                                  </button>
-                                  <button
-                                    onClick={() => setVideoAspectRatio('9:16')}
-                                    className={cn(
-                                      "px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all",
-                                      videoAspectRatio === '9:16' ? "bg-white text-[#0c2444] shadow-lg" : "text-white/40 hover:text-white"
-                                    )}
-                                  >
-                                    Vertical (9:16)
-                                  </button>
-                                </div>
-                                <span className="text-[10px] text-white/20 uppercase tracking-widest">
-                                  {videoAspectRatio === '16:9' ? 'Ideal para VSL & YouTube' : 'Ideal para Reels & TikTok Ads'}
-                                </span>
-                              </div>
-                            </div>
-
-                            {!generatedVideo ? (
-                              <div className="space-y-6">
-                                <button
-                                  onClick={generateVideoAsset}
-                                  disabled={videoLoading}
-                                  className="px-8 py-4 bg-white text-[#0c2444] rounded-2xl font-bold uppercase tracking-widest text-[10px] hover:bg-[#f58f2a] hover:text-white transition-all flex items-center gap-3 disabled:opacity-50"
-                                >
-                                  {videoLoading ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />}
-                                  {videoLoading ? 'Processando Vídeo...' : 'Gerar Vídeo (Veo 3.1)'}
-                                </button>
-
-                                {videoLoading && (
-                                  <div className="space-y-4">
-                                    <p className="text-[10px] text-white/60 animate-pulse flex items-center gap-2">
-                                      <Loader2 className="animate-spin" size={10} />
-                                      {status}
-                                    </p>
-                                    <div className="space-y-2">
-                                      <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-white/40">
-                                        <span>Progresso da Geração</span>
-                                        <span>{videoProgress}%</span>
-                                      </div>
-                                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                        <motion.div
-                                          className="h-full bg-[#f58f2a]"
-                                          initial={{ width: 0 }}
-                                          animate={{ width: `${videoProgress}%` }}
-                                          transition={{ duration: 0.5 }}
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {videoError && (
-                                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3">
-                                    <AlertCircle className="text-red-500 shrink-0" size={16} />
-                                    <p className="text-xs text-red-500/80 leading-relaxed">
-                                      {videoError}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="flex gap-4">
-                                <button
-                                  onClick={downloadVideo}
-                                  className="px-6 py-3 bg-white/10 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-white/20 transition-all"
-                                >
-                                  <Download size={14} /> Download MP4
-                                </button>
-                                <button
-                                  onClick={() => { setGeneratedVideo(null); setVideoProgress(0); }}
-                                  className="px-6 py-3 bg-white/5 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 transition-all"
-                                >
-                                  <RefreshCw size={14} /> Gerar Novamente
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          <div className="w-full md:w-[400px] aspect-video bg-black/40 rounded-3xl border border-white/10 flex items-center justify-center overflow-hidden">
-                            {generatedVideo ? (
-                              <video src={generatedVideo} controls className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="text-center space-y-4">
-                                <div className={cn("w-12 h-12 rounded-full border-2 border-white/10 flex items-center justify-center mx-auto", videoLoading && "animate-pulse")}>
-                                  <Video className="text-white/20" size={20} />
-                                </div>
-                                <p className="text-[10px] uppercase tracking-widest text-white/20">Aguardando Geração</p>
-                              </div>
-                            )}
-                          </div>
+              {!result && !loading && (
+                <div className="h-full min-h-[500px] bg-white/[0.02] rounded-[40px] border border-white/5 flex flex-col items-center justify-center text-center p-12">
+                  <ImageIcon size={48} className="text-white/10 mb-6" />
+                  <h3 className="text-2xl font-serif italic">Inicie sua estratégia</h3>
+                </div>
+              )}
+              {result && (
+                <div className="space-y-12">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {result.assets.map((a, i) => (
+                      <div key={i} className={cn("relative rounded-[32px] overflow-hidden border border-white/5 bg-white/5 group", a.aspectRatio === '1:1' ? 'aspect-square' : a.aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-video')}>
+                        <img src={a.url} alt={a.label} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <p className="text-[#f58f2a] font-bold text-[10px] uppercase tracking-widest mb-2">{a.label}</p>
+                          <button onClick={() => downloadImage(a.url, a.label || 'asset')} className="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center"><Download size={16} /></button>
                         </div>
                       </div>
-
-                      {/* Narration Section (Omitted per user request)
-                      <div className="md:col-span-2 bg-[#0c2444] rounded-[40px] p-10 border border-white/5 relative overflow-hidden">
-                        ... (Narration code preserved)
-                      </div>
-                      */}
-                    </div>
-
-                    {/* Strategy Document */}
-                    <div className="bg-white text-[#050505] p-12 md:p-20 rounded-[56px] shadow-2xl relative strategy-doc">
-                      <div className="absolute top-12 right-12 opacity-10 print:hidden">
-                        <CheckCircle2 size={64} />
-                      </div>
-
-                      <div className="prose prose-slate max-w-none 
-                          prose-headings:font-serif prose-headings:italic prose-headings:font-normal prose-headings:text-[#0c2444]
-                          prose-h1:text-6xl prose-h2:text-4xl prose-h2:mt-16 prose-h2:border-b prose-h2:border-black/5 prose-h2:pb-4
-                          prose-p:text-xl prose-p:leading-relaxed prose-p:text-black/70
-                          prose-li:text-lg prose-li:text-black/60
-                          prose-strong:text-[#f15424] prose-strong:font-bold">
-                        <Markdown>{result.text}</Markdown>
-                      </div>
-
-                      <div className="mt-20 pt-12 border-t border-black/5 flex flex-col md:flex-row justify-between items-center gap-8 print:hidden">
-                        <div className="flex items-center gap-6">
-                          <div className="w-16 h-16 rounded-2xl bg-[#0c2444] flex items-center justify-center shadow-xl">
-                            <Rocket className="text-[#f58f2a]" size={28} />
+                    ))}
+                    <div className="md:col-span-2 bg-[#0c2444] rounded-[40px] p-10 border border-white/5">
+                      <div className="flex flex-col md:flex-row gap-10">
+                        <div className="flex-1 space-y-6">
+                          <div className="flex items-center gap-3 text-[#f58f2a] text-xs font-bold uppercase tracking-widest"><Video size={16} /> Asset de Vídeo</div>
+                          <h3 className="text-2xl font-serif italic text-white/95">Preview Cinematográfico</h3>
+                          <p className="text-sm text-white/50 italic leading-relaxed">"{result.videoPrompt}"</p>
+                          <div className="flex gap-2">
+                            {['16:9', '9:16'].map(r => (
+                              <button key={r} onClick={() => setVideoAspectRatio(r as any)} className={cn("px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all", videoAspectRatio === r ? "bg-[#f58f2a] border-[#f58f2a]" : "border-white/10 text-white/40")}>{r}</button>
+                            ))}
                           </div>
-                          <div>
-                            <p className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-40">MASTER FUNIL</p>
-                            <p className="text-lg font-bold">MAIS MARKETING ENGINE</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-4">
-                          <button
-                            onClick={exportToPDF}
-                            className="px-8 py-4 border border-black/10 rounded-2xl text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white transition-all flex items-center gap-3"
-                          >
-                            <Download size={16} /> Exportar Estratégia
+                          <button onClick={generateVideoAsset} disabled={videoLoading} className="w-full py-4 bg-white text-[#0c2444] rounded-2xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 shadow-xl shadow-white/5 hover:bg-[#f58f2a] hover:text-white transition-all">
+                            {videoLoading ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} {videoLoading ? status : 'Gerar Vídeo Real (Veo 3.1)'}
                           </button>
+                          {videoError && <p className="text-red-400 text-xs">{videoError}</p>}
+                          {videoLoading && <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden"><motion.div className="h-full bg-[#f58f2a]" initial={{ width: 0 }} animate={{ width: `${videoProgress}%` }} /></div>}
+                        </div>
+                        <div className="w-full md:w-[350px] aspect-video bg-black rounded-3xl border border-white/5 flex items-center justify-center overflow-hidden">
+                          {generatedVideo ? <video src={generatedVideo} controls className="w-full h-full object-cover" /> : <p className="text-[10px] uppercase tracking-widest text-white/10">Aguardando geração</p>}
                         </div>
                       </div>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  </div>
+                  <div className="bg-white text-black p-12 md:p-20 rounded-[56px] strategy-doc">
+                    <div className="prose prose-slate max-w-none prose-headings:font-serif prose-headings:italic prose-h1:text-5xl prose-h2:text-3xl prose-h2:mt-12 prose-strong:text-[#f15424]">
+                      <Markdown>{result.text}</Markdown>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
       </main>
-
-      <footer className="max-w-7xl mx-auto p-12 text-center border-t border-white/5">
-        <p className="text-[10px] uppercase tracking-[0.5em] font-bold text-white/20">
-          © 2026 MASTER FUNIL | MARKETING MAIS CORPORATIVO
-        </p>
-      </footer>
     </div>
   );
 }
+
+// Missing icons mock
+const PowerOff = ({ size }: { size: number }) => <LogOut size={size} />;
