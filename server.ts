@@ -321,9 +321,16 @@ async function startServer() {
       });
 
       console.log(`[Vertex AI] Requesting content for prompt: ${prompt.substring(0, 100)}...`);
-      const result = await modelInstance.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
-      });
+
+      // Timeout of 60 seconds
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: Vertex AI não respondeu em 60 segundos.")), 60000));
+
+      const result = await Promise.race([
+        modelInstance.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }]
+        }),
+        timeoutPromise
+      ]) as any;
 
       console.log(`[Vertex AI] Content received. Processing response...`);
       const response = await result.response;
