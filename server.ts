@@ -94,11 +94,11 @@ const PORT = Number(process.env.PORT) || 3000;
 // genAI is now removed in favor of vertexAI
 
 // Vertex AI Client (Enterprise)
-const PROJECT_ID = process.env.GOOGLE_PROJECT_ID;
-const LOCATION = process.env.GOOGLE_LOCATION || "us-central1";
+const PROJECT_ID = process.env.GOOGLE_PROJECT_ID?.trim();
+const LOCATION = process.env.GOOGLE_LOCATION?.trim() || "us-central1";
 
 let vertexAI: any = null;
-if (PROJECT_ID) {
+if (PROJECT_ID && PROJECT_ID !== "") {
   console.log(`[Vertex AI] Initialized for Project: ${PROJECT_ID}, Location: ${LOCATION}`);
   vertexAI = new VertexAI({ project: PROJECT_ID, location: LOCATION });
 }
