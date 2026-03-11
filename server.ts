@@ -303,13 +303,17 @@ async function startServer() {
 
   // --- AI Server Proxy Endpoints ---
   app.post("/api/ai/generate-text", authenticate, async (req, res) => {
-    const { prompt, systemInstruction, model } = req.body;
+    const { model, prompt, systemInstruction, apiKey } = req.body;
     try {
       if (!prompt) throw new Error("Prompt is required");
-      const targetModel = model || "gemini-3.1-pro-preview";
+      const targetModel = model || "gemini-2.0-flash";
+
+      // Use client-provided key (AI Studio) or server key
+      const clientGenAI = apiKey ? new GoogleGenAI({ apiKey }) : genAI;
+
       console.log(`[AI] Generating text with model: ${targetModel}`);
 
-      const result = await genAI.models.generateContent({
+      const result = await clientGenAI.models.generateContent({
         model: targetModel,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined }
@@ -327,13 +331,15 @@ async function startServer() {
   });
 
   app.post("/api/ai/generate-image", authenticate, async (req, res) => {
-    const { prompt, aspectRatio, model } = req.body;
+    const { prompt, aspectRatio, model, apiKey } = req.body;
     try {
       if (!prompt) throw new Error("Prompt is required");
       const targetModel = model || "gemini-2.5-flash-image";
+
+      const clientGenAI = apiKey ? new GoogleGenAI({ apiKey }) : genAI;
       console.log(`[AI] Generating image with model: ${targetModel}`);
 
-      const result = await genAI.models.generateContent({
+      const result = await clientGenAI.models.generateContent({
         model: targetModel,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { imageConfig: { aspectRatio: aspectRatio || '1:1' } }
@@ -449,9 +455,10 @@ async function startServer() {
   });
 
   app.post("/api/ai/generate-audio", authenticate, async (req, res) => {
-    const { text, model } = req.body;
+    const { text, model, apiKey } = req.body;
     try {
-      const response: any = await (genAI.models as any).generateContent({
+      const clientGenAI = apiKey ? new GoogleGenAI({ apiKey }) : genAI;
+      const response: any = await (clientGenAI.models as any).generateContent({
         model: model || "gemini-2.5-flash-preview-tts",
         contents: [{ parts: [{ text }] }],
         config: {
