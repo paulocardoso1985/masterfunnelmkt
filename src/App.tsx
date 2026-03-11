@@ -35,8 +35,7 @@ import {
   Share2,
   Check,
   X,
-  Plus,
-  Key
+  Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -49,14 +48,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 // --- Types ---
-declare global {
-  interface Window {
-    aistudio?: {
-      hasSelectedApiKey: () => boolean;
-      openSelectKey: () => Promise<void>;
-    };
-  }
-}
+// AI Studio global type removed
 
 interface User {
   id: number;
@@ -293,30 +285,14 @@ REQUISITOS TÉCNICOS ADICIONAIS:
 
 IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade absoluta. Não seja sucinto. Seja completo e profissional.`;
 
-      // Verificação de API Key para ambiente AI Studio
-      let selectedApiKey = '';
-      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-        if (!window.aistudio.hasSelectedApiKey()) {
-          await window.aistudio.openSelectKey();
-          return;
-        }
-        if (typeof (window.aistudio as any).getApiKey === 'function') {
-          selectedApiKey = await (window.aistudio as any).getApiKey();
-        }
-      }
-
-      // 1. Generate Strategy Text & Video Prompts (Now via Server)
+      // 1. Generate Strategy Text & Video Prompts (Now via Vertex AI)
       const textResponse = await fetch('/api/ai/generate-text', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(selectedApiKey ? { 'x-goog-api-key': selectedApiKey } : {})
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: prompt,
           systemInstruction: "Você é o Diretor de Criação da MASTER FUNNEL. Sua missão é entregar estratégias de marketing de elite, com português impecável (PT-BR), tom persuasivo e autoridade absoluta.",
-          model: textModel,
-          apiKey: selectedApiKey
+          model: textModel
         })
       });
 
@@ -366,15 +342,11 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
         try {
           const res = await fetch('/api/ai/generate-image', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(selectedApiKey ? { 'x-goog-api-key': selectedApiKey } : {})
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               prompt: p,
               aspectRatio: ratio,
-              model: imageModel,
-              apiKey: selectedApiKey
+              model: imageModel
             })
           });
 
@@ -445,36 +417,14 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
   const generateVideoAsset = async () => {
     if (!result?.videoPrompt) return;
 
-    // Verificação de API Key para ambiente Veo no AI Studio
-    let selectedApiKey = '';
-    if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-      if (!window.aistudio.hasSelectedApiKey()) {
-        await window.aistudio.openSelectKey();
-        return;
-      }
-      // @ts-ignore - aistudio might have getApiKey or similar
-      if (typeof (window.aistudio as any).getApiKey === 'function') {
-        selectedApiKey = await (window.aistudio as any).getApiKey();
-      }
-    }
-
-    setVideoLoading(true);
-    setVideoError(null);
-    setVideoProgress(5);
-    setStatus('Iniciando operação assíncrona...');
-
     try {
-      // 1. Inicia a Geração no Backend
+      // 1. Inicia a Geração no Backend (Vertex AI)
       const startResp = await fetch('/api/ai/generate-video', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(selectedApiKey ? { 'x-goog-api-key': selectedApiKey } : {})
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: result.videoPrompt,
-          aspectRatio: videoAspectRatio,
-          apiKey: selectedApiKey
+          aspectRatio: videoAspectRatio
         })
       });
 
@@ -507,11 +457,7 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
           return Math.min(98, prev + inc);
         });
 
-        const statusResp = await fetch(`/api/ai/operation-status/${operationName}`, {
-          headers: {
-            ...(selectedApiKey ? { 'x-goog-api-key': selectedApiKey } : {})
-          }
-        });
+        const statusResp = await fetch(`/api/ai/operation-status/${operationName}`);
         if (!statusResp.ok) continue;
 
         const statusData = await statusResp.json();
@@ -547,23 +493,11 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
     setStatus('Gerando narração profissional em PT-BR...');
 
     try {
-      // Verificação de API Key para AI Studio
-      let selectedApiKey = '';
-      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-        if (typeof (window.aistudio as any).getApiKey === 'function') {
-          selectedApiKey = await (window.aistudio as any).getApiKey();
-        }
-      }
-
       const resp = await fetch('/api/ai/generate-audio', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(selectedApiKey ? { 'x-goog-api-key': selectedApiKey } : {})
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: result.narrationScript,
-          apiKey: selectedApiKey
+          text: result.narrationScript
         })
       });
 
@@ -1304,39 +1238,27 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
                     )}
                   </AnimatePresence>
 
-                  <div className="flex flex-col gap-4">
-                    <button
-                      onClick={generateStrategy}
-                      disabled={loading}
-                      className={cn(
-                        "w-full py-5 rounded-2xl font-bold uppercase tracking-[0.2em] text-xs transition-all flex items-center justify-center gap-3 shadow-xl",
-                        loading
-                          ? "bg-white/5 text-white/20 cursor-not-allowed"
-                          : "bg-[#f58f2a] text-white hover:bg-[#f15424] active:scale-95 shadow-orange-500/20"
-                      )}
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="animate-spin" size={18} />
-                          {status || 'Processando...'}
-                        </>
-                      ) : (
-                        <>
-                          Gerar Ecossistema <ArrowRight size={18} />
-                        </>
-                      )}
-                    </button>
-
-                    {window.aistudio && (
-                      <button
-                        onClick={() => window.aistudio?.openSelectKey()}
-                        className="w-full py-4 rounded-2xl border border-white/10 text-[10px] uppercase tracking-widest font-bold text-white/40 hover:bg-white/5 hover:text-white transition-all flex items-center justify-center gap-2"
-                      >
-                        <Key size={14} className="text-[#f58f2a]" />
-                        Configurar Chave de API (Vídeo/Imagem)
-                      </button>
+                  <button
+                    onClick={generateStrategy}
+                    disabled={loading}
+                    className={cn(
+                      "w-full py-5 rounded-2xl font-bold uppercase tracking-[0.2em] text-xs transition-all flex items-center justify-center gap-3 shadow-xl",
+                      loading
+                        ? "bg-white/5 text-white/20 cursor-not-allowed"
+                        : "bg-[#f58f2a] text-white hover:bg-[#f15424] active:scale-95 shadow-orange-500/20"
                     )}
-                  </div>
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="animate-spin" size={18} />
+                        {status || 'Processando...'}
+                      </>
+                    ) : (
+                      <>
+                        Gerar Ecossistema <ArrowRight size={18} />
+                      </>
+                    )}
+                  </button>
 
                   {error && (
                     <motion.div
