@@ -323,11 +323,69 @@ async function startServer() {
 
   // --- AI Server Proxy Endpoints ---
   app.post("/api/ai/generate-text", authenticate, async (req, res) => {
-    const { model, prompt, systemInstruction, apiKey } = req.body;
+    const { model, prompt, systemInstruction } = req.body;
     try {
       if (!prompt) throw new Error("Prompt is required");
+      const vAI = getVertexAI();
+      if (!vAI) throw new Error("Vertex AI is not initialized.");
+
       const targetModel = model || "gemini-2.0-flash";
-            const auth = new GoogleAuth({
+      const modelInstance = vAI.getGenerativeModel({
+        model: targetModel,
+        systemInstruction: systemInstruction || "Você é o Diretor de Criação da MASTER FUNIL."
+      });
+
+      const result = await modelInstance.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }]
+      });
+
+      const response = await result.response;
+      res.json({ text: response.candidates?.[0]?.content?.parts?.[0]?.text });
+    } catch (err: any) {
+      console.error("AI Generation Error:", err);
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/ai/generate-image", authenticate, async (req, res) => {
+    const { prompt, aspectRatio, model } = req.body;
+    try {
+      const vAI = getVertexAI();
+      if (!vAI) throw new Error("Vertex AI is not initialized.");
+
+      const targetModel = model || "imagen-3.0-generate-001";
+      const modelInstance = vAI.getGenerativeModel({ model: targetModel });
+
+      console.log(`[Vertex AI] Generating image for prompt: "${prompt.substring(0, 50)}..." Ratio: ${aspectRatio}`);
+
+      const result = await modelInstance.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          // @ts-ignore - Vertex specific properties
+          aspectRatio: aspectRatio || "1:1",
+        }
+      });
+
+      const response = await result.response;
+      const part = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
+
+      if (part?.inlineData?.data) {
+        res.json({ data: part.inlineData.data });
+      } else {
+        throw new Error("O modelo não retornou dados de imagem em Vertex AI.");
+      }
+    } catch (err: any) {
+      console.error("AI Image Generation Error:", err);
+      res.status(err.status || 500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/ai/generate-video", authenticate, async (req, res) => {
+    const { prompt } = req.body;
+    try {
+      if (!prompt) throw new Error("Prompt is required");
+
+      const auth = new GoogleAuth({
         scopes: 'https://www.googleapis.com/auth/cloud-platform',
       });
       const client = await auth.getClient();
@@ -344,7 +402,7 @@ async function startServer() {
       };
 
       console.log(`[Vertex AI] Requesting Video LRO (REST) for ${targetModel}`);
-      
+
       const restResp = await fetch(url, {
         method: 'POST',
         headers: {
@@ -362,24 +420,9 @@ async function startServer() {
       } else {
         throw new Error(videoData.error?.message || "Erro ao iniciar operação de vídeo via REST.");
       }
-    }
-      // Extract the video data if available directly or via LRO if the SDK handles it
-      const part = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData || p.fileData);
-
-      if (part) {
-        res.json({ success: true, part });
-      } else {
-        throw new Error("O modelo não retornou dados de vídeo.");
-      }
-
     } catch (err: any) {
-      console.error("AI Video Generation Error Details:", {
-        message: err.message,
-        stack: err.stack,
-        details: err.details,
-        response: err.response?.data
-      });
-      res.status(err.status || 500).json({ error: err.message, details: err.details });
+      console.error("AI Video Generation Error Details:", err);
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -389,10 +432,6 @@ async function startServer() {
       const vAI = getVertexAI();
       if (!vAI) throw new Error("Vertex AI is not initialized.");
       const operationName = req.params[0];
-
-      // On Vertex AI, operations are checked via the model or a dedicated service
-      // We'll use the raw name and assume it's a long running operation
-      // The vertexAI SDK provides helpers or we can use the location-aware endpoint
 
       const operation: any = await (vertexAI as any).getOperation({
         name: operationName
@@ -414,13 +453,8 @@ async function startServer() {
     const videoUrl = req.query.url as string;
     try {
       if (!videoUrl) throw new Error("URL é obrigatória");
-
-      // For Vertex AI, we might not need a specialized key for GCS URIs if the server has access
-      // But if it's a signed URL or public, we can just fetch it.
       const videoRes = await fetch(videoUrl);
-
       if (!videoRes.ok) throw new Error(`Falha ao buscar vídeo: ${videoRes.statusText}`);
-
       res.setHeader("Content-Type", "video/mp4");
       const buffer = await videoRes.arrayBuffer();
       res.send(Buffer.from(buffer));
@@ -436,8 +470,6 @@ async function startServer() {
       const vAI = getVertexAI();
       if (!vAI) throw new Error("Vertex AI is not initialized.");
 
-      // Using Gemini 2.0 Flash on Vertex for high-quality TTS if available
-      // or fallback to 1.5 Flash which is stable.
       const targetModel = model || "gemini-1.5-flash";
       const modelInstance = vAI.getGenerativeModel({ model: targetModel });
 
