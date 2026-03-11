@@ -92,16 +92,22 @@ seedAdmin();
 const JWT_SECRET = process.env.JWT_SECRET || "master-funnel-secret-2026";
 const PORT = Number(process.env.PORT) || 3000;
 // genAI is now removed in favor of vertexAI
-
-// Vertex AI Client (Enterprise)
-const PROJECT_ID = process.env.GOOGLE_PROJECT_ID?.trim();
-const LOCATION = process.env.GOOGLE_LOCATION?.trim() || "us-central1";
-
 let vertexAI: any = null;
-if (PROJECT_ID && PROJECT_ID !== "") {
-  console.log(`[Vertex AI] Initialized for Project: ${PROJECT_ID}, Location: ${LOCATION}`);
-  vertexAI = new VertexAI({ project: PROJECT_ID, location: LOCATION });
-}
+
+// Lazy Vertex AI initialization helper
+const getVertexAI = () => {
+  const proj = process.env.GOOGLE_PROJECT_ID?.trim();
+  const loc = process.env.GOOGLE_LOCATION?.trim() || "us-central1";
+
+  if (!vertexAI && proj && proj !== "") {
+    console.log(`[Vertex AI] Initializing for Project: ${proj}, Location: ${loc}`);
+    vertexAI = new VertexAI({ project: proj, location: loc });
+  }
+  return vertexAI;
+};
+
+// Periodic check for initialization (helpful after cold starts or var changes)
+setInterval(() => getVertexAI(), 30000);
 
 async function startServer() {
   const app = express();
@@ -304,7 +310,8 @@ async function startServer() {
     try {
       if (!prompt) throw new Error("Prompt is required");
       const targetModel = model || "gemini-2.0-flash";
-      if (!vertexAI) throw new Error("Vertex AI is not initialized. Please check GOOGLE_PROJECT_ID.");
+      const vAI = getVertexAI();
+      if (!vAI) throw new Error("Vertex AI is not initialized. Please check GOOGLE_PROJECT_ID on Railway Variables.");
 
       console.log(`[Vertex AI] Generating text with model: ${targetModel}`);
 
@@ -336,8 +343,9 @@ async function startServer() {
     const { prompt, aspectRatio, model, apiKey } = req.body;
     try {
       if (!prompt) throw new Error("Prompt is required");
-      if (!vertexAI) throw new Error("Vertex AI is not initialized.");
-      const targetModel = model || "imagen-3.0-generate-001"; // Industry standard on Vertex
+      const vAI = getVertexAI();
+      if (!vAI) throw new Error("Vertex AI is not initialized.");
+      const targetModel = model || "imagen-3.0-generate-001";
 
       console.log(`[Vertex AI] Generating image with model: ${targetModel}`);
 
@@ -370,7 +378,8 @@ async function startServer() {
     try {
       if (!prompt) throw new Error("Prompt is required");
 
-      if (!vertexAI) throw new Error("Vertex AI is not initialized.");
+      const vAI = getVertexAI();
+      if (!vAI) throw new Error("Vertex AI is not initialized.");
       const targetModel = 'veo-3.1-fast-generate-preview';
       const professionalPrompt = `${prompt}. MANDATORY REQUIREMENTS: The video must be professional, corporate, and high-end. If there is any voiceover or audio integration, it MUST use perfect Brazilian Portuguese (PT-BR) with a professional business tone, correct intonation, and no artifacts/bizarreness. Length: 8 seconds.`;
 
@@ -403,7 +412,8 @@ async function startServer() {
   // Endpoint 2: Polling de Status (Usa wildcard '*' para aceitar nomes com barras do Google)
   app.get("/api/ai/operation-status/*", authenticate, async (req, res) => {
     try {
-      if (!vertexAI) throw new Error("Vertex AI is not initialized.");
+      const vAI = getVertexAI();
+      if (!vAI) throw new Error("Vertex AI is not initialized.");
       const operationName = req.params[0];
 
       // On Vertex AI, operations are checked via the model or a dedicated service
@@ -484,9 +494,10 @@ async function startServer() {
   // --- Diagnostic & Debug Routes ---
   app.get("/api/ai/debug-simple", authenticate, async (req, res) => {
     try {
-      if (!vertexAI) throw new Error("Vertex AI is not initialized.");
+      const vAI = getVertexAI();
+      if (!vAI) throw new Error("Vertex AI is not initialized.");
       console.log("[AI-DEBUG] Testing simple generation with Vertex...");
-      const modelInstance = vertexAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const modelInstance = vAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const result = await modelInstance.generateContent({
         contents: [{ role: 'user', parts: [{ text: "Diga 'Conexão Vertex OK' em português." }] }]
       });

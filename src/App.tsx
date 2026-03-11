@@ -232,7 +232,7 @@ export default function App() {
     setGeneratedVideo(null);
     setGeneratedAudio(null);
     setStatus('Arquitetando narrativa de elite...');
-    const textModel = "gemini-3.1-pro-preview";
+    const textModel = "gemini-2.0-flash";
     try {
       // Log usage
       const aspectRatioMap: Record<string, "1:1" | "9:16" | "16:9"> = {
