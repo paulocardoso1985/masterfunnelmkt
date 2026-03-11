@@ -27,7 +27,16 @@ import {
   RefreshCw,
   LogOut,
   History,
-  Trash2
+  Trash2,
+  ChevronRight,
+  ChevronDown,
+  Layout,
+  Music,
+  Share2,
+  Check,
+  X,
+  Plus,
+  Key
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -423,8 +432,8 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
       // More specific error handling
       if (err.status === 404) {
         setError(`Modelo não encontrado (${textModel}). Por favor, verifique se o modelo está liberado para sua região.`);
-      } else if (err.status === 403) {
-        setError("Chave de API inválida ou sem permissão para este modelo.");
+      } else if (err.status === 403 || err.status === 401) {
+        setError("Não Autorizado: Clique no botão 'Configurar Chave de API' e selecione uma chave válida (necessário para Vídeo/Imagem).");
       } else {
         setError(err.message || "Erro na geração. Verifique sua chave de API ou tente novamente.");
       }
