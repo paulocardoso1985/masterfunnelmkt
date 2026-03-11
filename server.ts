@@ -381,7 +381,7 @@ async function startServer() {
         modelInstance.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
-            // @ts-ignore - Vertex specific config for Imagen
+            // @ts-ignore - Imagen specific parameters
             sampleCount: 1,
             aspectRatio: aspectRatio || '1:1'
           }
@@ -427,14 +427,12 @@ async function startServer() {
       console.log(`[Vertex AI] Starting enterprise video generation (Model: ${targetModel})`);
       const modelInstance = vAI.getGenerativeModel({ model: targetModel });
 
-      // For Veo/Video on Vertex AI, it's often generateContent with VIDEO modality
-      // or specialized methods. Since 'generateVideos' failed, we use the standard generateContent
-      // which is the common interface in the latest SDKs.
+      // For specialized models like Veo, we use a simpler generationConfig or no configurationModalities
       const startPromise = modelInstance.generateContent({
         contents: [{ role: 'user', parts: [{ text: professionalPrompt }] }],
         generationConfig: {
-          // @ts-ignore - Vertex specific config
-          responseModalities: ["VIDEO"],
+          // @ts-ignore - Veo specific config
+          aspectRatio: aspectRatio === '16:9' ? '16:9' : '9:16'
         }
       });
 
