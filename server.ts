@@ -459,12 +459,13 @@ async function startServer() {
   app.post("/api/ai/generate-audio", authenticate, async (req, res) => {
     const { text, model } = req.body;
     try {
-      if (!vertexAI) throw new Error("Vertex AI is not initialized.");
+      const vAI = getVertexAI();
+      if (!vAI) throw new Error("Vertex AI is not initialized.");
 
       // Using Gemini 2.0 Flash on Vertex for high-quality TTS if available
       // or fallback to 1.5 Flash which is stable.
       const targetModel = model || "gemini-1.5-flash";
-      const modelInstance = vertexAI.getGenerativeModel({ model: targetModel });
+      const modelInstance = vAI.getGenerativeModel({ model: targetModel });
 
       const result = await modelInstance.generateContent({
         contents: [{ role: 'user', parts: [{ text }] }],
