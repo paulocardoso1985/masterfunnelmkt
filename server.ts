@@ -397,8 +397,18 @@ async function startServer() {
         res.status(500).json({ error: "Falha ao gerar imagem: Dado binário não encontrado." });
       }
     } catch (err: any) {
-      console.error("AI Image Generation Error:", err);
-      res.status(err.status || 500).json({ error: err.message });
+      console.error("AI Image Generation Error Details:", {
+        message: err.message,
+        stack: err.stack,
+        details: err.details,
+        status: err.status,
+        response: err.response?.data
+      });
+      res.status(err.status || 500).json({
+        error: err.message,
+        details: err.details,
+        status: err.status
+      });
     }
   });
 
