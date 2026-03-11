@@ -7,7 +7,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import fs from "fs";
-import os from "os";
 import { VertexAI } from "@google-cloud/vertexai";
 import { GoogleAuth } from 'google-auth-library';
 import "dotenv/config";
@@ -15,18 +14,25 @@ import "dotenv/config";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// --- Auth Fix: Handle JSON strings in GOOGLE_APPLICATION_CREDENTIALS ---
-const rawCreds = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
-if (rawCreds && rawCreds.includes('{')) {
-  const tempPath = path.join(os.tmpdir(), `google-creds-${Date.now()}.json`);
-  try {
-    fs.writeFileSync(tempPath, rawCreds);
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = tempPath;
-    console.log(`[Auth] Credentials JSON written to: ${tempPath}`);
-  } catch (err) {
-    console.error(`[Auth] Critical failure writing temp credentials:`, err);
+// --- Robust Auth Setup ---
+const getAuthOptions = () => {
+  const creds = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
+  if (!creds) return {};
+  if (creds.includes('{')) {
+    try {
+      const parsed = JSON.parse(creds);
+      return { credentials: parsed };
+    } catch (e) {
+      console.error("[Auth] Error parsing JSON credentials");
+      return {};
+    }
   }
-}
+  return { keyFile: creds };
+};
+
+const authOptions = getAuthOptions();
+const projectId = process.env.GOOGLE_PROJECT_ID;
+const location = process.env.GOOGLE_LOCATION || "us-central1";
 
 // Ensure data directory exists
 const dataDir = path.join(__dirname, "data");
@@ -35,19 +41,15 @@ if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 let db: any;
 try {
   db = new Database(path.join(dataDir, "database.db"));
-  console.log("Banco de dados pronto.");
 } catch (err) {
   db = new Database(":memory:");
-  console.warn("Usando banco de dados em memória.");
 }
 
-// --- DB Schema ---
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, password TEXT, role TEXT, name TEXT);
   CREATE TABLE IF NOT EXISTS strategies (id INTEGER PRIMARY KEY AUTOINCREMENT, userId INTEGER, negocio TEXT, ideia TEXT, publico TEXT, estilo TEXT, formatos TEXT, reportText TEXT, videoPrompt TEXT, narrationScript TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);
 `);
 
-// Admin Seed
 const adminEmail = "paulo.cardoso@maiscorporativo.tur.br";
 if (!db.prepare("SELECT id FROM users WHERE email = ?").get(adminEmail)) {
   db.prepare("INSERT INTO users (email, password, role, name) VALUES (?, ?, ?, ?)").run(
@@ -58,17 +60,15 @@ if (!db.prepare("SELECT id FROM users WHERE email = ?").get(adminEmail)) {
 const JWT_SECRET = process.env.JWT_SECRET || "master-funnel-secret-2026";
 const PORT = Number(process.env.PORT) || 3000;
 
-// Internal Vertex REST Helper
+// Centralized REST Helper with Explicit Auth
 async function fetchVertex(uriPath: string, method: string = 'GET', body?: any) {
-  const proj = process.env.GOOGLE_PROJECT_ID;
-  const loc = process.env.GOOGLE_LOCATION || 'us-central1';
-  const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform' });
+  const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform', ...authOptions });
   const client = await auth.getClient();
   const token = (await client.getAccessToken()).token;
 
   const url = uriPath.startsWith('projects/')
-    ? `https://${loc}-aiplatform.googleapis.com/v1/${uriPath}`
-    : `https://${loc}-aiplatform.googleapis.com/v1/projects/${proj}/locations/${loc}/${uriPath}`;
+    ? `https://${location}-aiplatform.googleapis.com/v1/${uriPath}`
+    : `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/${uriPath}`;
 
   const response = await fetch(url, {
     method,
@@ -81,12 +81,12 @@ async function fetchVertex(uriPath: string, method: string = 'GET', body?: any) 
   return data;
 }
 
-let vertexAI: any = null;
+let vertexAIInstance: any = null;
 const getVertexAI = () => {
-  if (!vertexAI && process.env.GOOGLE_PROJECT_ID) {
-    vertexAI = new VertexAI({ project: process.env.GOOGLE_PROJECT_ID, location: process.env.GOOGLE_LOCATION || "us-central1" });
+  if (!vertexAIInstance && projectId) {
+    vertexAIInstance = new VertexAI({ project: projectId, location, googleAuthOptions: authOptions });
   }
-  return vertexAI;
+  return vertexAIInstance;
 };
 
 async function startServer() {
@@ -116,7 +116,7 @@ async function startServer() {
     res.json({ user: { id: user.id, email: user.email, role: user.role, name: user.name } });
   });
 
-  app.get("/api/health", (req, res) => res.json({ status: "ok", time: new Date().toISOString() }));
+  app.get("/api/health", (req, res) => res.json({ status: "ok", vertexReady: !!projectId }));
 
   app.get("/api/strategies", authenticate, (req: any, res) => {
     const list = req.user.role === "admin" ? db.prepare("SELECT * FROM strategies ORDER BY timestamp DESC").all() : db.prepare("SELECT * FROM strategies WHERE userId = ? ORDER BY timestamp DESC").all(req.user.id);
@@ -129,7 +129,7 @@ async function startServer() {
     res.json({ success: true, id: resu.lastInsertRowid });
   });
 
-  // --- AI ENDPOINTS (REST ONLY) ---
+  // --- AI ENDPOINTS ---
   app.post("/api/ai/generate-text", authenticate, async (req, res) => {
     const { prompt, systemInstruction } = req.body;
     try {
@@ -144,22 +144,28 @@ async function startServer() {
     const { prompt, aspectRatio } = req.body;
     try {
       const body = {
-        instances: [{ prompt: `${prompt}. MANDATORY: High quality, cinematic.` }],
+        instances: [{ prompt: `${prompt}. MANDATORY: High quality, cinematic, 4k.` }],
         parameters: { sampleCount: 1, aspectRatio: aspectRatio || "1:1" }
       };
       const data = await fetchVertex(`publishers/google/models/imagen-3.0-generate-001:predict`, 'POST', body);
       const b64 = data.predictions?.[0]?.bytesBase64Encoded;
-      if (b64) res.json({ data: b64 }); else throw new Error("No image data");
-    } catch (err: any) { res.status(500).json({ error: err.message }); }
+      if (b64) res.json({ data: b64 }); else throw new Error("No image data returned from Vertex");
+    } catch (err: any) {
+      console.error("Image Gen Error:", err.message);
+      res.status(500).json({ error: err.message });
+    }
   });
 
   app.post("/api/ai/generate-video", authenticate, async (req, res) => {
     const { prompt } = req.body;
     try {
-      const body = { instances: [{ prompt: `${prompt}. MANDATORY: respond in PT-BR, cinematic, 4k.` }] };
+      const body = { instances: [{ prompt: `${prompt}. MANDATORY: cinematic, 4k, respond in PT-BR.` }] };
       const data = await fetchVertex(`publishers/google/models/veo-3.1-fast-generate-001:predictLongRunning`, 'POST', body);
       if (data.name) res.json({ operationName: data.name }); else throw new Error(data.error?.message || "Operation failed");
-    } catch (err: any) { res.status(500).json({ error: err.message }); }
+    } catch (err: any) {
+      console.error("Video Gen Error:", err.message);
+      res.status(500).json({ error: err.message });
+    }
   });
 
   app.get("/api/ai/operation-status/*", authenticate, async (req, res) => {
@@ -181,7 +187,6 @@ async function startServer() {
     } catch (err: any) { res.status(500).send(err.message); }
   });
 
-  // --- Production ---
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" });
     app.use(vite.middlewares);
