@@ -453,10 +453,10 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
         attempts++;
         await new Promise(r => setTimeout(r, 5000));
 
-        // Progresso visual fluido
+        // Progresso visual mais rápido para o modelo FAST
         setVideoProgress(prev => {
           if (prev >= 98) return prev;
-          const inc = prev < 50 ? 5 : (prev < 80 ? 2 : 0.5);
+          const inc = prev < 50 ? 15 : (prev < 80 ? 5 : 1);
           return Math.min(98, prev + inc);
         });
 

@@ -348,7 +348,7 @@ async function startServer() {
 
       // Use a chave fornecida pelo frontend ou a padrão do servidor
       const clientGenAI = apiKey ? new GoogleGenAI({ apiKey }) : genAI;
-      const targetModel = 'veo-3.1-generate-preview';
+      const targetModel = 'veo-3.1-fast-generate-preview';
 
       console.log(`[AI] Starting video generation operation (Model: ${targetModel}, Aspect: ${aspectRatio || '16:9'})`);
 
