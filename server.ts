@@ -176,8 +176,8 @@ async function startServer() {
     if (!user || !bcrypt.compareSync(password, user.password)) {
       return res.status(401).json({ error: "Credenciais inválidas" });
     }
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: "24h" });
-    res.cookie("auth_token", token, { httpOnly: true, secure: true, sameSite: "none" });
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: "7d" });
+    res.cookie("auth_token", token, { httpOnly: true, secure: true, sameSite: "none", maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.json({ user: { id: user.id, email: user.email, role: user.role, name: user.name } });
   });
 
@@ -313,10 +313,12 @@ async function startServer() {
         systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } as any : undefined
       });
 
+      console.log(`[Vertex AI] Requesting content for prompt: ${prompt.substring(0, 100)}...`);
       const result = await modelInstance.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }]
       });
 
+      console.log(`[Vertex AI] Content received. Processing response...`);
       const response = await result.response;
       res.json({ text: response.candidates?.[0]?.content?.parts?.[0]?.text || "" });
     } catch (err: any) {
