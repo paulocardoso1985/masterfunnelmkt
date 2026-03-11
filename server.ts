@@ -399,8 +399,9 @@ async function startServer() {
 
       let operation: any;
       console.log(`[Vertex AI] Starting enterprise video generation (Model: ${targetModel})`);
-      const modelInstance = vertexAI.getGenerativeModel({ model: targetModel });
-      operation = await (modelInstance as any).generateVideos({
+      const modelInstance = vAI.getGenerativeModel({ model: targetModel });
+
+      const startPromise = (modelInstance as any).generateVideos({
         prompt: professionalPrompt,
         config: {
           numberOfVideos: 1,
@@ -409,6 +410,10 @@ async function startServer() {
           durationSeconds: 8
         }
       });
+
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: O servidor de vídeo não respondeu em 60 segundos.")), 60000));
+
+      operation = await Promise.race([startPromise, timeoutPromise]);
 
       if (!operation || !operation.name) {
         throw new Error("A API não conseguiu iniciar a operação. Verifique sua chave e permissões.");
