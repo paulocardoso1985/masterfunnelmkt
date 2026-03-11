@@ -333,7 +333,7 @@ async function startServer() {
 
       const modelInstance = vAI.getGenerativeModel({
         model: targetModel,
-        systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } as any : undefined
+        systemInstruction: systemInstruction ? { parts: [{ text: `${systemInstruction} MANDATORILY: Respond ALWAYS and ONLY in Brazilian Portuguese (PT-BR).` }] } as any : { parts: [{ text: "MANDATORILY: Respond ALWAYS and ONLY in Brazilian Portuguese (PT-BR)." }] } as any
       });
 
       console.log(`[Vertex AI] Requesting content for prompt: ${prompt.substring(0, 100)}...`);
@@ -421,18 +421,17 @@ async function startServer() {
 
       const vAI = getVertexAI();
       if (!vAI) throw new Error("Vertex AI is not initialized.");
-      const targetModel = 'veo-3.1-fast-generate-preview';
-      const professionalPrompt = `${prompt}. MANDATORY REQUIREMENTS: The video must be professional, corporate, and high-end. If there is any voiceover or audio integration, it MUST use perfect Brazilian Portuguese (PT-BR) with a professional business tone, correct intonation, and no artifacts/bizarreness. Length: 8 seconds.`;
+      // Using veo-3.0-generate-001 as it has quota in this project
+      const targetModel = 'veo-3.0-generate-001';
+      const professionalPrompt = `${prompt}. MANDATORY: Use Brazilian Portuguese (PT-BR) for any text in the video. The video must be professional, corporate, and high-end. Length: 8 seconds.`;
 
       let operation: any;
       console.log(`[Vertex AI] Starting enterprise video generation (Model: ${targetModel})`);
 
-      // For Veo/Video, some SDK versions prefer specific methods
-      // We'll wrap in a try-catch to see if specialised methods exist
+      // Using the model instance
       const modelInstance = vAI.getGenerativeModel({ model: targetModel });
 
-      // As per user's "friend" and LRO requirements, we use a simple call
-      // and expect the SDK to handle the LRO or return an operation handle.
+      // As per LRO requirements, we use a simple call
       const startPromise = modelInstance.generateContent({
         contents: [{ role: 'user', parts: [{ text: professionalPrompt }] }]
       });
