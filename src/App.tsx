@@ -1416,18 +1416,24 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
                                 </button>
 
                                 {videoLoading && (
-                                  <div className="space-y-2">
-                                    <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-white/40">
-                                      <span>Progresso da Geração</span>
-                                      <span>{videoProgress}%</span>
-                                    </div>
-                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                      <motion.div
-                                        className="h-full bg-[#f58f2a]"
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${videoProgress}%` }}
-                                        transition={{ duration: 0.5 }}
-                                      />
+                                  <div className="space-y-4">
+                                    <p className="text-[10px] text-white/60 animate-pulse flex items-center gap-2">
+                                      <Loader2 className="animate-spin" size={10} />
+                                      {status}
+                                    </p>
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-white/40">
+                                        <span>Progresso da Geração</span>
+                                        <span>{videoProgress}%</span>
+                                      </div>
+                                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                        <motion.div
+                                          className="h-full bg-[#f58f2a]"
+                                          initial={{ width: 0 }}
+                                          animate={{ width: `${videoProgress}%` }}
+                                          transition={{ duration: 0.5 }}
+                                        />
+                                      </div>
                                     </div>
                                   </div>
                                 )}
