@@ -462,20 +462,16 @@ async function startServer() {
         model: model || "gemini-2.5-flash-preview-tts",
         contents: [{ parts: [{ text }] }],
         config: {
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Aoede' },
-            },
-          },
-        },
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } }
+        }
       });
 
-      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (base64Audio) {
-        res.json({ data: base64Audio });
+      const part = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
+
+      if (part?.inlineData?.data) {
+        res.json({ data: part.inlineData.data });
       } else {
-        res.status(500).json({ error: "O modelo não retornou dados de áudio." });
+        throw new Error("O modelo não retornou dados de áudio.");
       }
     } catch (err: any) {
       console.error("AI Audio Generation Error:", err);
