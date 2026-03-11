@@ -339,12 +339,18 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
         else if (fullLabel.includes('16:9')) ratio = '16:9';
         else ratio = aspectRatioMap[baseType] || '16:9';
 
-        // --- Asset Selection Filter ---
-        // Only generate images for the formats explicitly selected by the user
+        // --- Robust Asset Selection Filter ---
+        // Normalize names to make matching less sensitive (strip spaces, lowercase)
+        const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, '');
+        const normalizedBaseType = normalize(baseType);
+
         const isSelected = formatos.some(f => {
-          const cleanF = f.split(' - ')[0]; // E.g., "Feed (Instagram/LinkedIn)"
-          return baseType.startsWith(cleanF);
+          const selectedType = f.split(' - ')[0]; // E.g., "Feed (Instagram/LinkedIn)"
+          const normalizedSelected = normalize(selectedType);
+          return normalizedBaseType.includes(normalizedSelected) || normalizedSelected.includes(normalizedBaseType);
         });
+
+        console.log(`[DEBUG] Asset: "${fullLabel}" | Selected: ${isSelected}`);
 
         if (!isSelected) {
           console.log(`Skipping asset generation for unselected format: ${fullLabel}`);

@@ -421,27 +421,41 @@ async function startServer() {
 
       const vAI = getVertexAI();
       if (!vAI) throw new Error("Vertex AI is not initialized.");
-      // Using veo-3.1-fast-generate-001 as specifically requested by the user
+
       const targetModel = 'veo-3.1-fast-generate-001';
-      const professionalPrompt = `${prompt}. MANDATORY: Use Brazilian Portuguese (PT-BR) for any text in the video. The video must be professional, corporate, and high-end. Length: 8 seconds.`;
+      const professionalPrompt = `${prompt}. MANDATORY: Respond ONLY in Portuguese (PT-BR). Style: Cinematic, 4k.`;
 
-      let operation: any;
-      console.log(`[Vertex AI] Starting enterprise video generation (Model: ${targetModel})`);
+      console.log(`[Vertex AI] Starting Video LRO for ${targetModel}`);
 
-      // Using the model instance
+      // We need to use the specialized PredictLongRunning method for Veo 3.1
+      // The SDK might not expose it directly on the model instance yet
+      // so we use a more direct request if needed, or check if the SDK has a helper.
+
       const modelInstance = vAI.getGenerativeModel({ model: targetModel });
 
-      // As per LRO requirements, we use a simple call
-      const startPromise = modelInstance.generateContent({
+      // Attempting to initiate the generation
+      // Vertex AI SDK usually returns a response with the operation details for Veo
+      const result = await modelInstance.generateContent({
         contents: [{ role: 'user', parts: [{ text: professionalPrompt }] }]
       });
 
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: O servidor de vídeo não respondeu em 60 segundos.")), 60000));
-
-      const result = await Promise.race([startPromise, timeoutPromise]) as any;
       const response = await result.response;
 
-      console.log(`[Vertex AI] Video Content received.`);
+      // If the SDK returns an operation (e.g., in the response metadata or part)
+      // we extract it. For Veo 3.1, it often returns a 429 if not using LRO endpoint,
+      // but if the SDK is updated, it might return an operation object.
+
+      // DEBUG: Log the full response to see where the operation name is
+      console.log("[Vertex AI] Video Response:", JSON.stringify(response));
+
+      const operationName = response.metadata?.operation?.name || response.operation?.name;
+
+      if (operationName) {
+        res.json({ operationName });
+      } else {
+        // Fallback or explicit check for older SDK patterns
+        throw new Error("Não foi possível obter o ID da operação de vídeo. Verifique se o modelo está liberado.");
+      }
       // Extract the video data if available directly or via LRO if the SDK handles it
       const part = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData || p.fileData);
 
