@@ -274,13 +274,13 @@ ESTRUTURA OBRIGATÓRIA DA RESPOSTA (NÃO PULE NENHUMA SEÇÃO):
    - Texto completo para locução em PT-BR, com tom grave, compassado e de autoridade máxima.
 
 REQUISITOS TÉCNICOS ADICIONAIS:
-1. IDIOMA: Todo o conteúdo deve ser em PORTUGUÊS DO BRASIL (PT-BR) de altíssimo nível.
-2. ASSETS_PROMPTS: No final, adicione a seção "ASSETS_PROMPTS" com prompts cinematográficos para CADA formato.
+1. IDIOMA: Todo o conteúdo (texto, labels, scripts e QUALQUER TEXTO DENTRO DAS IMAGENS) deve ser em PORTUGUÊS DO BRASIL (PT-BR) de altíssimo nível.
+2. ASSETS_PROMPTS: No final, adicione a seção "ASSETS_PROMPTS" com prompts cinematográficos para CADA formato solicitado.
 3. REGRAS PARA IMAGENS:
-   - Cada asset deve ser identificado como: [ASSET: Nome do Formato (Indique a Proporção 1:1 ou 9:16 ou 16:9 aqui) | PROMPT: Descrição em inglês, cinematográfica, focada no produto].
+   - Cada asset deve ser identificado como: [ASSET: Nome do Formato (Indique a Proporção 1:1 ou 9:16 ou 16:9 aqui) | PROMPT: Descrição em inglês, cinematográfica, focada no produto. MANDATORILY: Any text appearing inside the image MUST be in Brazilian Portuguese (PT-BR)].
    - Para Carrosséis, gere prompts para os ${slidesCarrossel} slides: [ASSET: Nome do Carrossel - Slide X (Proporção) | PROMPT: ...].
 4. VÍDEO E ÁUDIO:
-   - [VIDEO_PROMPT: Descrição cinematográfica em inglês para vídeo de impacto de 8s].
+   - [VIDEO_PROMPT: Descrição cinematográfica em inglês para vídeo de impacto de 8s. Any visible text MUST be in PT-BR].
    - [NARRATION_SCRIPT: Texto persuasivo em PT-BR para locução de 8s].
 
 IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade absoluta. Não seja sucinto. Seja completo e profissional.`;
@@ -338,6 +338,18 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
         else if (fullLabel.includes('9:16')) ratio = '9:16';
         else if (fullLabel.includes('16:9')) ratio = '16:9';
         else ratio = aspectRatioMap[baseType] || '16:9';
+
+        // --- Asset Selection Filter ---
+        // Only generate images for the formats explicitly selected by the user
+        const isSelected = formatos.some(f => {
+          const cleanF = f.split(' - ')[0]; // E.g., "Feed (Instagram/LinkedIn)"
+          return baseType.startsWith(cleanF);
+        });
+
+        if (!isSelected) {
+          console.log(`Skipping asset generation for unselected format: ${fullLabel}`);
+          continue;
+        }
 
         try {
           const res = await fetch('/api/ai/generate-image', {
