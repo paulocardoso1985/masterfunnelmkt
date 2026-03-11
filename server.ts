@@ -381,9 +381,8 @@ async function startServer() {
         modelInstance.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
-            // @ts-ignore - Imagen specific parameters
-            sampleCount: 1,
-            aspectRatio: aspectRatio || '1:1'
+            // aspectRatio is not supported in generationConfig for generateContent
+            // sampleCount: 1
           }
         }),
         timeoutPromise
@@ -427,12 +426,11 @@ async function startServer() {
       console.log(`[Vertex AI] Starting enterprise video generation (Model: ${targetModel})`);
       const modelInstance = vAI.getGenerativeModel({ model: targetModel });
 
-      // For specialized models like Veo, we use a simpler generationConfig or no configurationModalities
+      // For specialized models like Veo, we use a simpler generationConfig or none to avoid 400 errors
       const startPromise = modelInstance.generateContent({
         contents: [{ role: 'user', parts: [{ text: professionalPrompt }] }],
         generationConfig: {
-          // @ts-ignore - Veo specific config
-          aspectRatio: aspectRatio === '16:9' ? '16:9' : '9:16'
+          // aspectRatio is not supported in generationConfig for generateContent on Veo
         }
       });
 
