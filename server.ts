@@ -378,15 +378,16 @@ async function startServer() {
     }
   });
 
-  // Endpoint 2: Polling de Status
-  app.get("/api/ai/operation-status/:name", authenticate, async (req, res) => {
+  // Endpoint 2: Polling de Status (Usa wildcard '*' para aceitar nomes com barras do Google)
+  app.get("/api/ai/operation-status/*", authenticate, async (req, res) => {
     try {
+      const operationName = req.params[0];
       // Tenta pegar a chave do header (enviada pelo frontend se houver) ou usa a padrão
       const apiKey = req.headers['x-goog-api-key'] as string || GEMINI_API_KEY;
       const clientGenAI = new GoogleGenAI({ apiKey });
 
       const operation: any = await (clientGenAI.operations as any).getVideosOperation({
-        name: req.params.name
+        name: operationName
       });
 
       res.json({
