@@ -8,7 +8,7 @@ import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
-import VertexAI from "@google-cloud/aiplatform";
+import { VertexAI } from "@google-cloud/vertexai";
 import "dotenv/config";
 
 const __filename = fileURLToPath(import.meta.url);
