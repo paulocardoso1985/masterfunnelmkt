@@ -315,7 +315,7 @@ async function startServer() {
 
       console.log(`[Vertex AI] Generating text with model: ${targetModel}`);
 
-      const modelInstance = vertexAI.getGenerativeModel({
+      const modelInstance = vAI.getGenerativeModel({
         model: targetModel,
         systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } as any : undefined
       });
@@ -356,18 +356,25 @@ async function startServer() {
 
       console.log(`[Vertex AI] Generating image with model: ${targetModel}`);
 
-      const modelInstance = vertexAI.getGenerativeModel({ model: targetModel });
+      const modelInstance = vAI.getGenerativeModel({ model: targetModel });
 
-      const result = await modelInstance.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          // @ts-ignore - Vertex specific config for Imagen
-          sampleCount: 1,
-          aspectRatio: aspectRatio || '1:1'
-        }
-      });
+      // Timeout of 60 seconds
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: Imagem não gerada em 60 segundos.")), 60000));
 
-      const part = result.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
+      const result = await Promise.race([
+        modelInstance.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            // @ts-ignore - Vertex specific config for Imagen
+            sampleCount: 1,
+            aspectRatio: aspectRatio || '1:1'
+          }
+        }),
+        timeoutPromise
+      ]) as any;
+
+      const response = await result.response;
+      const part = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
       if (part?.inlineData?.data) {
         res.json({ data: part.inlineData.data });
       } else {
