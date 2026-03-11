@@ -1304,27 +1304,39 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
                     )}
                   </AnimatePresence>
 
-                  <button
-                    onClick={generateStrategy}
-                    disabled={loading}
-                    className={cn(
-                      "w-full py-5 rounded-2xl font-bold uppercase tracking-[0.2em] text-xs transition-all flex items-center justify-center gap-3 shadow-xl",
-                      loading
-                        ? "bg-white/5 text-white/20 cursor-not-allowed"
-                        : "bg-[#f58f2a] text-white hover:bg-[#f15424] active:scale-95 shadow-orange-500/20"
+                  <div className="flex flex-col gap-4">
+                    <button
+                      onClick={generateStrategy}
+                      disabled={loading}
+                      className={cn(
+                        "w-full py-5 rounded-2xl font-bold uppercase tracking-[0.2em] text-xs transition-all flex items-center justify-center gap-3 shadow-xl",
+                        loading
+                          ? "bg-white/5 text-white/20 cursor-not-allowed"
+                          : "bg-[#f58f2a] text-white hover:bg-[#f15424] active:scale-95 shadow-orange-500/20"
+                      )}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="animate-spin" size={18} />
+                          {status || 'Processando...'}
+                        </>
+                      ) : (
+                        <>
+                          Gerar Ecossistema <ArrowRight size={18} />
+                        </>
+                      )}
+                    </button>
+
+                    {window.aistudio && (
+                      <button
+                        onClick={() => window.aistudio?.openSelectKey()}
+                        className="w-full py-4 rounded-2xl border border-white/10 text-[10px] uppercase tracking-widest font-bold text-white/40 hover:bg-white/5 hover:text-white transition-all flex items-center justify-center gap-2"
+                      >
+                        <Key size={14} className="text-[#f58f2a]" />
+                        Configurar Chave de API (Vídeo/Imagem)
+                      </button>
                     )}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="animate-spin" size={18} />
-                        {status || 'Processando...'}
-                      </>
-                    ) : (
-                      <>
-                        Gerar Ecossistema <ArrowRight size={18} />
-                      </>
-                    )}
-                  </button>
+                  </div>
 
                   {error && (
                     <motion.div
