@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
+import { VertexAI } from "@google-cloud/aiplatform";
 import "dotenv/config";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -94,6 +95,16 @@ const PORT = Number(process.env.PORT) || 3000;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+
+// Vertex AI Client (Enterprise)
+const PROJECT_ID = process.env.GOOGLE_PROJECT_ID;
+const LOCATION = process.env.GOOGLE_LOCATION || "us-central1";
+
+let vertexAI: any = null;
+if (PROJECT_ID) {
+  console.log(`[Vertex AI] Initialized for Project: ${PROJECT_ID}, Location: ${LOCATION}`);
+  vertexAI = new VertexAI({ project: PROJECT_ID, location: LOCATION });
+}
 
 async function startServer() {
   const app = express();
@@ -346,24 +357,38 @@ async function startServer() {
     try {
       if (!prompt) throw new Error("Prompt is required");
 
-      // Use a chave fornecida pelo frontend ou a padrão do servidor
-      const clientGenAI = apiKey ? new GoogleGenAI({ apiKey }) : genAI;
       const targetModel = 'veo-3.1-fast-generate-preview';
-
-      console.log(`[AI] Starting video generation operation (Model: ${targetModel}, Aspect: ${aspectRatio || '16:9'})`);
-
       const professionalPrompt = `${prompt}. MANDATORY REQUIREMENTS: The video must be professional, corporate, and high-end. If there is any voiceover or audio integration, it MUST use perfect Brazilian Portuguese (PT-BR) with a professional business tone, correct intonation, and no artifacts/bizarreness. Length: 8 seconds.`;
 
-      const operation: any = await (clientGenAI.models as any).generateVideos({
-        model: targetModel,
-        prompt: professionalPrompt,
-        config: {
-          numberOfVideos: 1,
-          resolution: '720p',
-          aspectRatio: aspectRatio || '16:9',
-          durationSeconds: 8
-        }
-      });
+      let operation: any;
+
+      if (vertexAI && !apiKey) {
+        console.log(`[Vertex AI] Starting enterprise video generation (Model: ${targetModel})`);
+        const model = vertexAI.getGenerativeModel({ model: targetModel });
+        operation = await (model as any).generateVideos({
+          prompt: professionalPrompt,
+          config: {
+            numberOfVideos: 1,
+            resolution: '720p',
+            aspectRatio: aspectRatio || '16:9',
+            durationSeconds: 8
+          }
+        });
+      } else {
+        // Fallback to AI Studio
+        console.log(`[AI Studio] Starting video generation (Model: ${targetModel})`);
+        const clientGenAI = apiKey ? new GoogleGenAI({ apiKey }) : genAI;
+        operation = await (clientGenAI.models as any).generateVideos({
+          model: targetModel,
+          prompt: professionalPrompt,
+          config: {
+            numberOfVideos: 1,
+            resolution: '720p',
+            aspectRatio: aspectRatio || '16:9',
+            durationSeconds: 8
+          }
+        });
+      }
 
       if (!operation || !operation.name) {
         throw new Error("A API não conseguiu iniciar a operação. Verifique sua chave e permissões.");

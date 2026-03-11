@@ -451,7 +451,7 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
 
       while (!isDone && attempts < maxAttempts) {
         attempts++;
-        await new Promise(r => setTimeout(r, 5000));
+        await new Promise(r => setTimeout(r, 2000));
 
         // Progresso visual mais rápido para o modelo FAST
         setVideoProgress(prev => {
