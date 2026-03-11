@@ -50,6 +50,7 @@ try {
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, password TEXT, role TEXT, name TEXT);
   CREATE TABLE IF NOT EXISTS strategies (id INTEGER PRIMARY KEY AUTOINCREMENT, userId INTEGER, negocio TEXT, ideia TEXT, publico TEXT, estilo TEXT, formatos TEXT, reportText TEXT, videoPrompt TEXT, narrationScript TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);
+  CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, userId INTEGER, userName TEXT, userEmail TEXT, action TEXT, params TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);
 `);
 
 const adminEmail = "paulo.cardoso@maiscorporativo.tur.br";
@@ -147,6 +148,55 @@ async function startServer() {
   app.get("/api/me", authenticate, (req, res) => res.json({ user: req.user }));
   app.post("/api/logout", (req, res) => {
     res.clearCookie("auth_token");
+    res.json({ success: true });
+  });
+
+  // --- Usage Monitoring ---
+  app.post("/api/log-usage", authenticate, (req: any, res) => {
+    const { action, params } = req.body;
+    db.prepare("INSERT INTO logs (userId, userName, userEmail, action, params) VALUES (?, ?, ?, ?, ?)").run(
+      req.user.id,
+      req.user.name,
+      req.user.email,
+      action,
+      JSON.stringify(params)
+    );
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/logs", authenticate, (req: any, res) => {
+    if (req.user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
+    const logs = db.prepare("SELECT * FROM logs ORDER BY timestamp DESC LIMIT 100").all();
+    res.json({ logs: logs.map((l: any) => ({ ...l, params: JSON.parse(l.params || "{}") })) });
+  });
+
+  // --- User Management ---
+  app.get("/api/admin/users", authenticate, (req: any, res) => {
+    if (req.user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
+    const users = db.prepare("SELECT id, email, role, name FROM users").all();
+    res.json({ users });
+  });
+
+  app.post("/api/admin/users", authenticate, (req: any, res) => {
+    if (req.user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
+    const { email, password, name, role } = req.body;
+    try {
+      db.prepare("INSERT INTO users (email, password, name, role) VALUES (?, ?, ?, ?)").run(
+        email,
+        bcrypt.hashSync(password, 10),
+        name,
+        role || "user"
+      );
+      res.json({ success: true });
+    } catch (err) {
+      res.status(400).json({ error: "E-mail j├í cadastrado ou dados inv├ílidos" });
+    }
+  });
+
+  app.delete("/api/admin/users/:id", authenticate, (req: any, res) => {
+    if (req.user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
+    if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ error: "N├úo pode excluir a si mesmo" });
+    db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
     res.json({ success: true });
   });
 

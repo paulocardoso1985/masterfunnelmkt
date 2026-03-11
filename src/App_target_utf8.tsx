@@ -287,19 +287,15 @@ export default function App() {
       - IMPORTANTE: Para o formato "Feed (Instagram/LinkedIn) - 1:1", o prompt deve focar em uma composi├º├úo quadrada.
       - IMPORTANTE: Para o formato "Stories/Reels/TikTok - 9:16", o prompt deve focar em uma composi├º├úo vertical.`;
 
-      // 1. Generate Strategy Text
-      const textResponse = await fetch('/api/ai/generate-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: prompt,
-          systemInstruction: "Voc├¬ ├® o Diretor de Cria├º├úo da MASTER FUNNEL. Sua miss├úo ├® entregar estrat├®gias de marketing de elite, com portugu├¬s impec├ível (PT-BR), sem erros ortogr├íficos, e tom extremamente profissional e persuasivo."
-        })
+      const textResponse = await ai.models.generateContent({
+        model: textModel,
+        contents: prompt,
+        config: {
+          systemInstruction: "Voc├¬ ├® o Diretor de Cria├º├úo da MASTER FUNNEL. Sua miss├úo ├® entregar estrat├®gias de marketing de elite, com portugu├¬s impec├ível (PT-BR), sem erros ortogr├íficos, e tom extremamente profissional e persuasivo. Nunca use ingl├¬s no conte├║do final, exceto em termos t├®cnicos de marketing amplamente aceitos no Brasil.",
+        }
       });
 
-      if (!textResponse.ok) throw new Error(`Falha no texto (${textResponse.status})`);
-      const textData = await textResponse.json();
-      const fullText = textData.text || '';
+      const fullText = textResponse.text || '';
 
       // 2. Extract Prompts
       setStatus('Extraindo prompts e gerando visuais...');
@@ -337,20 +333,16 @@ export default function App() {
         else ratio = aspectRatioMap[baseType] || '16:9';
 
         try {
-          const res = await fetch('/api/ai/generate-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              prompt: p,
-              aspectRatio: ratio
-            })
+          const res = await ai.models.generateContent({
+            model: imageModel,
+            contents: { parts: [{ text: p }] },
+            config: { imageConfig: { aspectRatio: ratio } }
           });
 
-          if (!res.ok) throw new Error(`Imagem falhou (${res.status})`);
-          const data = await res.json();
-          if (data.data) {
+          const part = res.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+          if (part?.inlineData?.data) {
             generatedAssets.push({
-              url: `data:image/png;base64,${data.data}`,
+              url: `data:image/png;base64,${part.inlineData.data}`,
               tipo: baseType,
               label: fullLabel,
               aspectRatio: ratio
@@ -423,33 +415,35 @@ export default function App() {
     setStatus('Gerando v├¡deo cinematogr├ífico (Veo 3.1)...');
 
     try {
-      const resp = await fetch('/api/ai/generate-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: result.videoPrompt
-        })
+      const ai = getAI();
+      // Veo only supports 16:9 and 9:16.
+      const videoAspectRatio = result.assets[0]?.aspectRatio === '1:1' ? '16:9' : (result.assets[0]?.aspectRatio || '16:9');
+
+      let operation = await ai.models.generateVideos({
+        model: 'veo-3.1-fast-generate-preview',
+        prompt: result.videoPrompt,
+        config: {
+          numberOfVideos: 1,
+          resolution: '720p',
+          aspectRatio: videoAspectRatio,
+          durationSeconds: 8
+        }
       });
 
-      if (!resp.ok) throw new Error(`Falha ao iniciar v├¡deo (${resp.status})`);
-      const { operationName } = await resp.json();
-
-      let done = false;
-      let videoUrl = '';
-      while (!done) {
-        await new Promise(r => setTimeout(r, 5000));
-        const statusResp = await fetch(`/api/ai/operation-status/${operationName}`);
-        if (!statusResp.ok) continue;
-        const statusData = await statusResp.json();
-        if (statusData.done) {
-          done = true;
-          if (statusData.videoUri) videoUrl = statusData.videoUri;
-          else if (statusData.error) throw new Error(statusData.error.message || 'Falha no v├¡deo');
-        }
+      while (!operation.done) {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        operation = await ai.operations.getVideosOperation({ operation: operation });
       }
 
-      if (videoUrl) {
-        setGeneratedVideo(`/api/ai/video-proxy?url=${encodeURIComponent(videoUrl)}`);
+      const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+      if (downloadLink) {
+        const key = (process.env as any).API_KEY || process.env.GEMINI_API_KEY || '';
+        const videoRes = await fetch(downloadLink, {
+          headers: { 'x-goog-api-key': key }
+        });
+        if (!videoRes.ok) throw new Error(`Falha ao baixar v├¡deo: ${videoRes.statusText}`);
+        const blob = await videoRes.blob();
+        setGeneratedVideo(URL.createObjectURL(blob));
       }
     } catch (err: any) {
       console.error("Video Generation Error:", err);
@@ -635,7 +629,7 @@ export default function App() {
           <div className="text-center space-y-4">
             <div className="flex justify-center mb-6">
               <img
-                src="https://maiscorporativo.tur.br/wp-content/uploads/2025/02/Logo-azul-png.png"
+                src="/Logo_Mais_Braco_orange.png"
                 alt="Logo"
                 className="h-16 object-contain"
                 referrerPolicy="no-referrer"
@@ -726,7 +720,7 @@ export default function App() {
       <aside className="fixed left-0 top-0 h-full w-20 bg-[#0c2444] border-r border-white/5 flex flex-col items-center py-8 gap-8 z-50 hidden lg:flex">
         <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20 overflow-hidden p-2 border border-white/10">
           <img
-            src="https://maiscorporativo.tur.br/wp-content/uploads/2025/02/Logo-azul-png.png"
+            src="/logo.png"
             alt="Logo"
             className="w-full h-full object-contain"
             referrerPolicy="no-referrer"
@@ -774,7 +768,7 @@ export default function App() {
       <header className="h-20 border-b border-white/5 bg-[#050505]/80 backdrop-blur-xl sticky top-0 z-40 px-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <img
-            src="https://maiscorporativo.tur.br/wp-content/uploads/2025/02/Logo-azul-png.png"
+            src="/Logo_Mais_Braco_orange.png"
             alt="Logo"
             className="h-10 object-contain"
             referrerPolicy="no-referrer"
