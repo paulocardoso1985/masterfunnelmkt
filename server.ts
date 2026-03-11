@@ -327,136 +327,42 @@ async function startServer() {
     try {
       if (!prompt) throw new Error("Prompt is required");
       const targetModel = model || "gemini-2.0-flash";
-      const vAI = getVertexAI();
-      if (!vAI) throw new Error("Vertex AI is not initialized. Please check GOOGLE_PROJECT_ID on Railway Variables.");
-
-      console.log(`[Vertex AI] Generating text with model: ${targetModel}`);
-
-      const modelInstance = vAI.getGenerativeModel({
-        model: targetModel,
-        systemInstruction: systemInstruction ? { parts: [{ text: `${systemInstruction} MANDATORILY: Respond ALWAYS and ONLY in Brazilian Portuguese (PT-BR).` }] } as any : { parts: [{ text: "MANDATORILY: Respond ALWAYS and ONLY in Brazilian Portuguese (PT-BR)." }] } as any
+            const auth = new GoogleAuth({
+        scopes: 'https://www.googleapis.com/auth/cloud-platform',
       });
-
-      console.log(`[Vertex AI] Requesting content for prompt: ${prompt.substring(0, 100)}...`);
-
-      // Timeout of 60 seconds
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: Vertex AI não respondeu em 60 segundos.")), 60000));
-
-      const result = await Promise.race([
-        modelInstance.generateContent({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }]
-        }),
-        timeoutPromise
-      ]) as any;
-
-      console.log(`[Vertex AI] Content received. Processing response...`);
-      const response = await result.response;
-      res.json({ text: response.candidates?.[0]?.content?.parts?.[0]?.text || "" });
-    } catch (err: any) {
-      console.error("AI Text Generation Error:", err);
-      // Detailed error for the client to help debugging
-      res.status(err.status || 500).json({
-        error: err.message,
-        details: err.details || err.stack,
-        payload: { model, promptLength: prompt?.length }
-      });
-    }
-  });
-
-  app.post("/api/ai/generate-image", authenticate, async (req, res) => {
-    const { prompt, aspectRatio, model, apiKey } = req.body;
-    try {
-      if (!prompt) throw new Error("Prompt is required");
-      const vAI = getVertexAI();
-      if (!vAI) throw new Error("Vertex AI is not initialized.");
-      const targetModel = model || "imagen-3.0-generate-001";
-
-      console.log(`[Vertex AI] Generating image with model: ${targetModel}`);
-
-      const modelInstance = vAI.getGenerativeModel({ model: targetModel });
-
-      // Timeout of 60 seconds
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout: Imagem não gerada em 60 segundos.")), 60000));
-
-      // Simplified payload for Imagen 3
-      const result = await Promise.race([
-        modelInstance.generateContent({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }]
-          // Removed generationConfig entirely for initial stability test
-        }),
-        timeoutPromise
-      ]) as any;
-
-      const response = await result.response;
-      console.log(`[Vertex AI] Image Response received:`, JSON.stringify(response).substring(0, 200));
-
-      const part = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
-      if (part?.inlineData?.data) {
-        res.json({ data: part.inlineData.data });
-      } else {
-        // Log the full response to debug why it didn't return data
-        console.error("[Vertex AI] Image part missing inlineData. Full response:", JSON.stringify(response));
-        res.status(500).json({ error: "Falha ao gerar imagem: Dado binário não encontrado.", details: response });
-      }
-    } catch (err: any) {
-      console.error("AI Image Generation Error Details:", {
-        message: err.message,
-        stack: err.stack,
-        details: err.details,
-        status: err.status,
-        response: err.response?.data
-      });
-      res.status(err.status || 500).json({
-        error: err.message,
-        details: err.details,
-        status: err.status
-      });
-    }
-  });
-
-  // Endpoint 1: Iniciar Geração (Assíncrono)
-  app.post("/api/ai/generate-video", authenticate, async (req, res) => {
-    const { prompt, aspectRatio, apiKey } = req.body;
-    try {
-      if (!prompt) throw new Error("Prompt is required");
-
-      const vAI = getVertexAI();
-      if (!vAI) throw new Error("Vertex AI is not initialized.");
+      const client = await auth.getClient();
+      const projectId = process.env.GOOGLE_PROJECT_ID;
+      const location = process.env.GOOGLE_LOCATION || 'us-central1';
+      const accessTokenDetails = await client.getAccessToken();
+      const accessToken = accessTokenDetails.token || "";
 
       const targetModel = 'veo-3.1-fast-generate-001';
-      const professionalPrompt = `${prompt}. MANDATORY: Respond ONLY in Portuguese (PT-BR). Style: Cinematic, 4k.`;
+      const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${targetModel}:predictLongRunning`;
 
-      console.log(`[Vertex AI] Starting Video LRO for ${targetModel}`);
+      const videoBody = {
+        instances: [{ prompt: `${prompt}. MANDATORY: Respond ONLY in Portuguese (PT-BR). Style: Cinematic, 4k.` }]
+      };
 
-      // We need to use the specialized PredictLongRunning method for Veo 3.1
-      // The SDK might not expose it directly on the model instance yet
-      // so we use a more direct request if needed, or check if the SDK has a helper.
-
-      const modelInstance = vAI.getGenerativeModel({ model: targetModel });
-
-      // Attempting to initiate the generation
-      // Vertex AI SDK usually returns a response with the operation details for Veo
-      const result = await modelInstance.generateContent({
-        contents: [{ role: 'user', parts: [{ text: professionalPrompt }] }]
+      console.log(`[Vertex AI] Requesting Video LRO (REST) for ${targetModel}`);
+      
+      const restResp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(videoBody)
       });
 
-      const response = await result.response;
+      const videoData = await restResp.json();
+      console.log("[Vertex AI] Video REST Response:", JSON.stringify(videoData));
 
-      // If the SDK returns an operation (e.g., in the response metadata or part)
-      // we extract it. For Veo 3.1, it often returns a 429 if not using LRO endpoint,
-      // but if the SDK is updated, it might return an operation object.
-
-      // DEBUG: Log the full response to see where the operation name is
-      console.log("[Vertex AI] Video Response:", JSON.stringify(response));
-
-      const operationName = response.metadata?.operation?.name || response.operation?.name;
-
-      if (operationName) {
-        res.json({ operationName });
+      if (videoData.name) {
+        res.json({ operationName: videoData.name });
       } else {
-        // Fallback or explicit check for older SDK patterns
-        throw new Error("Não foi possível obter o ID da operação de vídeo. Verifique se o modelo está liberado.");
+        throw new Error(videoData.error?.message || "Erro ao iniciar operação de vídeo via REST.");
       }
+    }
       // Extract the video data if available directly or via LRO if the SDK handles it
       const part = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData || p.fileData);
 
