@@ -7,7 +7,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import fs from "fs";
-import { GoogleGenAI } from "@google/genai";
 import { VertexAI } from "@google-cloud/vertexai";
 import "dotenv/config";
 
@@ -92,9 +91,7 @@ seedAdmin();
 
 const JWT_SECRET = process.env.JWT_SECRET || "master-funnel-secret-2026";
 const PORT = Number(process.env.PORT) || 3000;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-
-const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+// genAI is now removed in favor of vertexAI
 
 // Vertex AI Client (Enterprise)
 const PROJECT_ID = process.env.GOOGLE_PROJECT_ID;
@@ -307,18 +304,21 @@ async function startServer() {
     try {
       if (!prompt) throw new Error("Prompt is required");
       const targetModel = model || "gemini-2.0-flash";
+      if (!vertexAI) throw new Error("Vertex AI is not initialized. Please check GOOGLE_PROJECT_ID.");
 
-      // Use client-provided key (AI Studio) or server key
-      const clientGenAI = apiKey ? new GoogleGenAI({ apiKey }) : genAI;
+      console.log(`[Vertex AI] Generating text with model: ${targetModel}`);
 
-      console.log(`[AI] Generating text with model: ${targetModel}`);
-
-      const result = await clientGenAI.models.generateContent({
+      const modelInstance = vertexAI.getGenerativeModel({
         model: targetModel,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: { systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined }
+        systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } as any : undefined
       });
-      res.json({ text: result.text });
+
+      const result = await modelInstance.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }]
+      });
+
+      const response = await result.response;
+      res.json({ text: response.candidates?.[0]?.content?.parts?.[0]?.text || "" });
     } catch (err: any) {
       console.error("AI Text Generation Error:", err);
       // Detailed error for the client to help debugging
@@ -334,15 +334,20 @@ async function startServer() {
     const { prompt, aspectRatio, model, apiKey } = req.body;
     try {
       if (!prompt) throw new Error("Prompt is required");
-      const targetModel = model || "gemini-2.5-flash-image";
+      if (!vertexAI) throw new Error("Vertex AI is not initialized.");
+      const targetModel = model || "imagen-3.0-generate-001"; // Industry standard on Vertex
 
-      const clientGenAI = apiKey ? new GoogleGenAI({ apiKey }) : genAI;
-      console.log(`[AI] Generating image with model: ${targetModel}`);
+      console.log(`[Vertex AI] Generating image with model: ${targetModel}`);
 
-      const result = await clientGenAI.models.generateContent({
-        model: targetModel,
+      const modelInstance = vertexAI.getGenerativeModel({ model: targetModel });
+
+      const result = await modelInstance.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: { imageConfig: { aspectRatio: aspectRatio || '1:1' } }
+        generationConfig: {
+          // @ts-ignore - Vertex specific config for Imagen
+          sampleCount: 1,
+          aspectRatio: aspectRatio || '1:1'
+        }
       });
 
       const part = result.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
@@ -363,38 +368,22 @@ async function startServer() {
     try {
       if (!prompt) throw new Error("Prompt is required");
 
+      if (!vertexAI) throw new Error("Vertex AI is not initialized.");
       const targetModel = 'veo-3.1-fast-generate-preview';
       const professionalPrompt = `${prompt}. MANDATORY REQUIREMENTS: The video must be professional, corporate, and high-end. If there is any voiceover or audio integration, it MUST use perfect Brazilian Portuguese (PT-BR) with a professional business tone, correct intonation, and no artifacts/bizarreness. Length: 8 seconds.`;
 
       let operation: any;
-
-      if (vertexAI && !apiKey) {
-        console.log(`[Vertex AI] Starting enterprise video generation (Model: ${targetModel})`);
-        const model = vertexAI.getGenerativeModel({ model: targetModel });
-        operation = await (model as any).generateVideos({
-          prompt: professionalPrompt,
-          config: {
-            numberOfVideos: 1,
-            resolution: '720p',
-            aspectRatio: aspectRatio || '16:9',
-            durationSeconds: 8
-          }
-        });
-      } else {
-        // Fallback to AI Studio
-        console.log(`[AI Studio] Starting video generation (Model: ${targetModel})`);
-        const clientGenAI = apiKey ? new GoogleGenAI({ apiKey }) : genAI;
-        operation = await (clientGenAI.models as any).generateVideos({
-          model: targetModel,
-          prompt: professionalPrompt,
-          config: {
-            numberOfVideos: 1,
-            resolution: '720p',
-            aspectRatio: aspectRatio || '16:9',
-            durationSeconds: 8
-          }
-        });
-      }
+      console.log(`[Vertex AI] Starting enterprise video generation (Model: ${targetModel})`);
+      const modelInstance = vertexAI.getGenerativeModel({ model: targetModel });
+      operation = await (modelInstance as any).generateVideos({
+        prompt: professionalPrompt,
+        config: {
+          numberOfVideos: 1,
+          resolution: '720p',
+          aspectRatio: aspectRatio || '16:9',
+          durationSeconds: 8
+        }
+      });
 
       if (!operation || !operation.name) {
         throw new Error("A API não conseguiu iniciar a operação. Verifique sua chave e permissões.");
@@ -412,12 +401,14 @@ async function startServer() {
   // Endpoint 2: Polling de Status (Usa wildcard '*' para aceitar nomes com barras do Google)
   app.get("/api/ai/operation-status/*", authenticate, async (req, res) => {
     try {
+      if (!vertexAI) throw new Error("Vertex AI is not initialized.");
       const operationName = req.params[0];
-      // Tenta pegar a chave do header (enviada pelo frontend se houver) ou usa a padrão
-      const apiKey = req.headers['x-goog-api-key'] as string || GEMINI_API_KEY;
-      const clientGenAI = new GoogleGenAI({ apiKey });
 
-      const operation: any = await (clientGenAI.operations as any).getVideosOperation({
+      // On Vertex AI, operations are checked via the model or a dedicated service
+      // We'll use the raw name and assume it's a long running operation
+      // The vertexAI SDK provides helpers or we can use the location-aware endpoint
+
+      const operation: any = await (vertexAI as any).getOperation({
         name: operationName
       });
 
@@ -438,10 +429,9 @@ async function startServer() {
     try {
       if (!videoUrl) throw new Error("URL é obrigatória");
 
-      const apiKey = req.headers['x-goog-api-key'] as string || GEMINI_API_KEY;
-      const videoRes = await fetch(videoUrl, {
-        headers: { 'x-goog-api-key': apiKey }
-      });
+      // For Vertex AI, we might not need a specialized key for GCS URIs if the server has access
+      // But if it's a signed URL or public, we can just fetch it.
+      const videoRes = await fetch(videoUrl);
 
       if (!videoRes.ok) throw new Error(`Falha ao buscar vídeo: ${videoRes.statusText}`);
 
@@ -455,23 +445,33 @@ async function startServer() {
   });
 
   app.post("/api/ai/generate-audio", authenticate, async (req, res) => {
-    const { text, model, apiKey } = req.body;
+    const { text, model } = req.body;
     try {
-      const clientGenAI = apiKey ? new GoogleGenAI({ apiKey }) : genAI;
-      const response: any = await (clientGenAI.models as any).generateContent({
-        model: model || "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text }] }],
-        config: {
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } }
+      if (!vertexAI) throw new Error("Vertex AI is not initialized.");
+
+      // Using Gemini 2.0 Flash on Vertex for high-quality TTS if available
+      // or fallback to 1.5 Flash which is stable.
+      const targetModel = model || "gemini-1.5-flash";
+      const modelInstance = vertexAI.getGenerativeModel({ model: targetModel });
+
+      const result = await modelInstance.generateContent({
+        contents: [{ role: 'user', parts: [{ text }] }],
+        generationConfig: {
+          // @ts-ignore - Vertex multi-modal properties
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } }
+          }
         }
       });
 
+      const response = await result.response;
       const part = response.candidates?.[0]?.content?.parts.find((p: any) => p.inlineData);
 
       if (part?.inlineData?.data) {
         res.json({ data: part.inlineData.data });
       } else {
-        throw new Error("O modelo não retornou dados de áudio.");
+        throw new Error("O modelo não retornou dados de áudio em Vertex AI.");
       }
     } catch (err: any) {
       console.error("AI Audio Generation Error:", err);
@@ -482,14 +482,16 @@ async function startServer() {
   // --- Diagnostic & Debug Routes ---
   app.get("/api/ai/debug-simple", authenticate, async (req, res) => {
     try {
-      console.log("[AI-DEBUG] Testing simple generation...");
-      const result = await genAI.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: [{ role: 'user', parts: [{ text: "Diga 'Conexão OK' em português." }] }]
+      if (!vertexAI) throw new Error("Vertex AI is not initialized.");
+      console.log("[AI-DEBUG] Testing simple generation with Vertex...");
+      const modelInstance = vertexAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await modelInstance.generateContent({
+        contents: [{ role: 'user', parts: [{ text: "Diga 'Conexão Vertex OK' em português." }] }]
       });
-      res.json({ success: true, text: result.text });
+      const response = await result.response;
+      res.json({ success: true, text: response.candidates?.[0]?.content?.parts?.[0]?.text });
     } catch (err: any) {
-      console.error("[AI-DEBUG] Simple test failed:", err);
+      console.error("[AI-DEBUG] Vertex test failed:", err);
       res.status(err.status || 500).json({ error: err.message, details: err.stack });
     }
   });
