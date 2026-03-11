@@ -421,8 +421,8 @@ async function startServer() {
 
       const vAI = getVertexAI();
       if (!vAI) throw new Error("Vertex AI is not initialized.");
-      // Using veo-3.0-generate-001 as it has quota in this project
-      const targetModel = 'veo-3.0-generate-001';
+      // Using veo-3.1-fast-generate-001 as specifically requested by the user
+      const targetModel = 'veo-3.1-fast-generate-001';
       const professionalPrompt = `${prompt}. MANDATORY: Use Brazilian Portuguese (PT-BR) for any text in the video. The video must be professional, corporate, and high-end. Length: 8 seconds.`;
 
       let operation: any;
