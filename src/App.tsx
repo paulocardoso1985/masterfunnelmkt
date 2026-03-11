@@ -339,21 +339,16 @@ IMPORTANTE: O texto deve ser extenso, denso, focado em conversão e autoridade a
         else if (fullLabel.includes('16:9')) ratio = '16:9';
         else ratio = aspectRatioMap[baseType] || '16:9';
 
-        // --- Robust Asset Selection Filter ---
-        // Normalize names to make matching less sensitive (strip spaces, lowercase)
-        const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, '');
-        const normalizedBaseType = normalize(baseType);
-
-        const isSelected = formatos.some(f => {
-          const selectedType = f.split(' - ')[0]; // E.g., "Feed (Instagram/LinkedIn)"
-          const normalizedSelected = normalize(selectedType);
-          return normalizedBaseType.includes(normalizedSelected) || normalizedSelected.includes(normalizedBaseType);
+                // --- Ultra-Robust Alphanumeric Selection Filter ---
+        const normalizeStr = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const normBaseType = normalizeStr(baseType);
+        const isMatched = formatos.some(f => {
+          const normF = normalizeStr(f.split(' - ')[0]);
+          return normBaseType.includes(normF) || normF.includes(normBaseType);
         });
-
-        console.log(`[DEBUG] Asset: "${fullLabel}" | Selected: ${isSelected}`);
-
-        if (!isSelected) {
-          console.log(`Skipping asset generation for unselected format: ${fullLabel}`);
+        console.log(`[DEBUG] Asset: "${fullLabel}" (Norm: ${normBaseType}) | Match: ${isMatched}`);
+        if (!isMatched) {
+          console.log(`Skipping asset generation (Filter active): ${fullLabel}`);
           continue;
         }
 
