@@ -4,7 +4,7 @@
         "dockerfilePath": "Dockerfile"
     },
     "deploy": {
-        "startCommand": "tsx server.ts",
+        "startCommand": "npm start",
         "restartPolicyType": "ON_FAILURE",
         "healthcheckPath": "/api/health",
         "healthcheckTimeout": 100
