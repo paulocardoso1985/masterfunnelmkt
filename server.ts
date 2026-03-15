@@ -8,34 +8,15 @@ import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import fs from "fs";
 import os from "os";
-import { VertexAI } from "@google-cloud/vertexai";
-import { GoogleAuth } from 'google-auth-library';
+import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // --- 🔐 THE BULLETPROOF AUTH FIX ---
-let authOptions: any = {};
-const rawCreds = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
-
-if (rawCreds && rawCreds.includes('{')) {
-  try {
-    const parsed = JSON.parse(rawCreds);
-    const tempPath = path.join(os.tmpdir(), `google-creds-${Date.now()}.json`);
-    fs.writeFileSync(tempPath, rawCreds);
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = tempPath;
-    authOptions = { credentials: parsed };
-    console.log(`[Auth] ✅ Credentials written to: ${tempPath}`);
-  } catch (err) {
-    console.error(`[Auth] ❌ Parse Error:`, err);
-  }
-} else if (rawCreds) {
-  authOptions = { keyFile: rawCreds };
-}
-
-const projectId = process.env.GOOGLE_PROJECT_ID;
-const location = process.env.GOOGLE_LOCATION || "us-central1";
+// Initialize Standard Gemini API client
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const dataDir = path.join(__dirname, "data");
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
@@ -63,62 +44,6 @@ if (!db.prepare("SELECT id FROM users WHERE email = ?").get(adminEmail)) {
 const JWT_SECRET = process.env.JWT_SECRET || "master-funnel-secret-2026";
 const PORT = Number(process.env.PORT) || 3000;
 
-// Centralized REST Helper with Dynamic Location Support
-async function fetchVertex(uriPath: string, method: string = 'GET', body?: any) {
-  const auth = new GoogleAuth({ scopes: 'https://www.googleapis.com/auth/cloud-platform', ...authOptions });
-  const client = await auth.getClient();
-  const tokenRes = await client.getAccessToken();
-  const token = tokenRes.token;
-
-  if (!token) throw new Error("No Google Access Token");
-
-  // Dynamically determine location from path if it's a full resource name
-  let targetLocation = location;
-  if (uriPath.startsWith('projects/')) {
-    const parts = uriPath.split('/');
-    const locIndex = parts.indexOf('locations');
-    if (locIndex !== -1 && parts[locIndex + 1]) {
-      targetLocation = parts[locIndex + 1];
-    }
-  }
-
-  const url = uriPath.startsWith('projects/')
-    ? `https://${targetLocation}-aiplatform.googleapis.com/v1/${uriPath}`
-    : `https://${targetLocation}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${targetLocation}/${uriPath}`;
-
-  console.log(`[Vertex REST] Calling (${targetLocation}): ${method} ${url}`);
-
-  const response = await fetch(url, {
-    method,
-    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined
-  });
-
-  const responseText = await response.text();
-  let data: any;
-  try {
-    data = JSON.parse(responseText);
-  } catch (e) {
-    data = { error: { message: responseText } };
-  }
-
-  if (!response.ok) {
-    console.error(`[Vertex REST] ❌ Status ${response.status}:`, data.error?.message || responseText);
-    throw new Error(data.error?.message || `API Error: ${response.statusText}`);
-  }
-
-  console.log(`[Vertex REST] ✅ Status ${response.status}`);
-  return data;
-}
-
-let vertexAIInstance: any = null;
-const getVertexAI = () => {
-  if (!vertexAIInstance && projectId) {
-    vertexAIInstance = new VertexAI({ project: projectId, location, googleAuthOptions: authOptions });
-  }
-  return vertexAIInstance;
-};
-
 async function startServer() {
   const app = express();
   app.use(express.json());
@@ -145,7 +70,7 @@ async function startServer() {
     res.json({ user: { id: user.id, email: user.email, role: user.role, name: user.name } });
   });
 
-  app.get("/api/me", authenticate, (req, res) => res.json({ user: req.user }));
+  app.get("/api/me", authenticate, (req: any, res: any) => res.json({ user: req.user }));
   app.post("/api/logout", (req, res) => {
     res.clearCookie("auth_token");
     res.json({ success: true });
@@ -214,41 +139,56 @@ async function startServer() {
   app.post("/api/ai/generate-text", authenticate, async (req, res) => {
     const { prompt, systemInstruction } = req.body;
     try {
-      const vAI = getVertexAI();
-      const model = vAI.getGenerativeModel({ model: "gemini-2.0-flash", systemInstruction: systemInstruction || "Diretor MASTER FUNIL" });
-      const result = await model.generateContent({ contents: [{ role: 'user', parts: [{ text: prompt }] }] });
-      res.json({ text: (await result.response).candidates?.[0]?.content?.parts?.[0]?.text });
+      const response = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: prompt,
+        config: { systemInstruction: systemInstruction || "Diretor MASTER FUNIL" }
+      });
+      res.json({ text: response.text });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
   app.post("/api/ai/generate-image", authenticate, async (req, res) => {
     const { prompt, aspectRatio } = req.body;
     try {
-      const body = {
-        instances: [{ prompt: `${prompt}. MANDATORY: High quality, cinematic.` }],
-        parameters: { sampleCount: 1, aspectRatio: aspectRatio || "1:1" }
-      };
-      const data = await fetchVertex(`publishers/google/models/imagen-3.0-generate-001:predict`, 'POST', body);
-      res.json({ data: data.predictions?.[0]?.bytesBase64Encoded });
+      const response = await ai.models.generateImages({
+        model: "imagen-3.0-generate-001",
+        prompt: `${prompt}. MANDATORY: High quality, cinematic.`,
+        config: {
+          aspectRatio: aspectRatio || "1:1",
+          numberOfImages: 1,
+          outputMimeType: "image/jpeg"
+        }
+      });
+      res.json({ data: response.generatedImages?.[0]?.image?.imageBytes });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
   app.post("/api/ai/generate-video", authenticate, async (req, res) => {
     const { prompt } = req.body;
     try {
-      const body = { instances: [{ prompt: `${prompt}. MANDATORY: cinematic, respond in PT-BR.` }] };
-      const data = await fetchVertex(`publishers/google/models/veo-3.1-fast-generate-001:predictLongRunning`, 'POST', body);
-      res.json({ operationName: data.name });
+      const operation = await ai.models.generateVideos({
+        model: "veo-2.0-generate-001",
+        prompt: `${prompt}. MANDATORY: cinematic, respond in PT-BR.`
+      });
+      res.json({ operationName: operation.name });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
   app.get("/api/ai/operation-status/*", authenticate, async (req, res) => {
     try {
-      const data = await fetchVertex(req.params[0]);
+      const operationName = req.params[0];
+      const operation: any = await (ai.operations as any).get({ name: operationName });
+      
+      let videoUri = null;
+      if (operation.done && operation.response?.generatedVideos?.[0]?.video?.uri) {
+        videoUri = operation.response.generatedVideos[0].video.uri;
+      }
+      
       res.json({
-        done: !!data.done,
-        videoUri: data.response?.generatedVideos?.[0]?.video?.uri,
-        error: data.error
+        done: !!operation.done,
+        videoUri: videoUri,
+        error: operation.error
       });
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
