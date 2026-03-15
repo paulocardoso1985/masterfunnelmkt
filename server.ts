@@ -140,7 +140,7 @@ async function startServer() {
     const { prompt, systemInstruction } = req.body;
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-1.5-flash-latest",
         contents: prompt,
         config: { systemInstruction: systemInstruction || "Diretor MASTER FUNIL" }
       });
