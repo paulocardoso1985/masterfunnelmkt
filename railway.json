@@ -1,0 +1,12 @@
+{
+    "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "Dockerfile"
+    },
+    "deploy": {
+        "startCommand": "tsx server.ts",
+        "restartPolicyType": "ON_FAILURE",
+        "healthcheckPath": "/api/health",
+        "healthcheckTimeout": 100
+    }
+}

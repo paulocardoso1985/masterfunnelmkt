@@ -1,0 +1,12 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+<<<<<<< HEAD
+data/
+=======
+>>>>>>> 8ab4ae4 (feat: initial commit for Master Funnel Marketing with Docker configuration)

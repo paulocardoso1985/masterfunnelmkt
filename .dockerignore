@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+.DS_Store
+dist
+temp_render_*
+temp_props_*.json
+public/video_*.mp4
+data/database.db
+.env
+.git
+.gitignore

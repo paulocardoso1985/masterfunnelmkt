@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  master-funnel:
+    build: .
+    container_name: master_funnel_app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    # Mapear a pasta de dados local para manter o banco SQLite síncrono e persistente
+    volumes:
+      - ./data:/app/data
+    restart: always
