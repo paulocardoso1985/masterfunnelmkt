@@ -114,13 +114,13 @@ async function startServer() {
       );
       res.json({ success: true });
     } catch (err) {
-      res.status(400).json({ error: "E-mail j├í cadastrado ou dados inv├ílidos" });
+      res.status(400).json({ error: "E-mail já cadastrado ou dados inválidos" });
     }
   });
 
   app.delete("/api/admin/users/:id", authenticate, (req: any, res) => {
     if (req.user.role !== "admin") return res.status(403).json({ error: "Acesso negado" });
-    if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ error: "N├úo pode excluir a si mesmo" });
+    if (parseInt(req.params.id) === req.user.id) return res.status(400).json({ error: "Não pode excluir a si mesmo" });
     db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
     res.json({ success: true });
   });

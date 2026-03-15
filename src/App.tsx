@@ -136,7 +136,7 @@ export default function App() {
         setError(data.error || "Falha no login");
       }
     } catch (err) {
-      setError("Erro de conex├úo");
+      setError("Erro de conexão");
     } finally {
       setLoading(false);
     }
@@ -188,17 +188,17 @@ export default function App() {
         alert(data.error);
       }
     } catch (err) {
-      alert("Erro ao adicionar usu├írio");
+      alert("Erro ao adicionar usuário");
     }
   };
 
   const handleDeleteUser = async (id: number) => {
-    if (!confirm("Tem certeza que deseja excluir este usu├írio?")) return;
+    if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
     try {
       const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
       if (res.ok) fetchUsers();
     } catch (err) {
-      alert("Erro ao excluir usu├írio");
+      alert("Erro ao excluir usuário");
     }
   };
 
@@ -212,7 +212,7 @@ export default function App() {
     const { negocio, ideia, publico, estilo, formatos, slidesCarrossel } = formData;
 
     if (!negocio.trim() || !ideia.trim() || !publico.trim() || !estilo.trim() || formatos.length === 0) {
-      setError("Ops! Para criar uma estrat├®gia de alta performance, precisamos que todos os campos (Neg├│cio, Ideia, P├║blico, Estilo e pelo menos um Formato) sejam preenchidos.");
+      setError("Ops! Para criar uma estratégia de alta performance, precisamos que todos os campos (Negócio, Ideia, Público, Estilo e pelo menos um Formato) sejam preenchidos.");
       return;
     }
 
@@ -245,47 +245,47 @@ export default function App() {
       };
 
       // 1. Generate Strategy Text & Video Prompts
-      const prompt = `Aja como o Diretor de Cria├º├úo e Estrat├®gia de Elite da MASTER FUNNEL MARKETING MAIS CORPORATIVO. 
+      const prompt = `Aja como o Diretor de Criação e Estratégia de Elite da MASTER FUNNEL MARKETING MAIS CORPORATIVO. 
       Crie um ecossistema de marketing digital de alta performance para "${negocio}".
       
       ${formatos.some(f => f.includes('Carrossel')) ? `- Slides por Carrossel: ${slidesCarrossel}` : ''}
 
-      REQUISITOS OBRIGAT├ôRIOS DE QUALIDADE:
-      1. IDIOMA E L├ìNGUA: Todo o ├íudio, narra├º├úo, di├ílogos e textos (inclusive textos em imagens/v├¡deos) devem ser exclusivamente em PORTUGU├èS DO BRASIL (PT-BR) com ortografia impec├ível.
-      2. CONTEXTO VISUAL NEUTRO: Os prompts visuais (Imagem e V├¡deo) devem focar na MARCA e no PRODUTO. N├âO inclua elementos geogr├íficos brasileiros (bandeiras, mapas, pontos tur├¡sticos) a menos que o neg├│cio seja explicitamente sobre o Brasil. Queremos a L├ìNGUA brasileira no ├íudio, n├úo necessariamente o Brasil como cen├írio visual.
-      3. REVIS├âO RIGOROSA: Erros de portugu├¬s (acentua├º├úo, concord├óncia) s├úo proibidos.
+      REQUISITOS OBRIGATÍRIOS DE QUALIDADE:
+      1. IDIOMA E LÍNGUA: Todo o áudio, narração, diálogos e textos (inclusive textos em imagens/vídeos) devem ser exclusivamente em PORTUGUÊS DO BRASIL (PT-BR) com ortografia impecável.
+      2. CONTEXTO VISUAL NEUTRO: Os prompts visuais (Imagem e Vídeo) devem focar na MARCA e no PRODUTO. NÃO inclua elementos geográficos brasileiros (bandeiras, mapas, pontos turísticos) a menos que o negócio seja explicitamente sobre o Brasil. Queremos a LÍNGUA brasileira no áudio, não necessariamente o Brasil como cenário visual.
+      3. REVISÃO RIGOROSA: Erros de português (acentuação, concordância) são proibidos.
       4. O tom deve ser extremamente profissional, persuasivo e focado em resultados de elite.
 
-      O relat├│rio deve ser em Markdown e incluir:
-      # ­ƒÄ» Estrat├®gia Master: ${negocio}
+      O relatório deve ser em Markdown e incluir:
+      # ­ƒÄ» Estratégia Master: ${negocio}
       ## 1. Posicionamento de Elite e Proposta de Valor
-      ## 2. Arquitetura do Funil de Convers├úo (Topo, Meio e Fundo de Funil)
-      ## 3. Mix de Canais Estrat├®gicos & Plano de Tr├ífego Pago
-      ## 4. Cronograma de Impacto (Plano de A├º├úo de 30 dias)
-      ## 5. Roteiro de Narra├º├úo Profissional (Para locu├º├úo)
+      ## 2. Arquitetura do Funil de Conversão (Topo, Meio e Fundo de Funil)
+      ## 3. Mix de Canais Estratégicos & Plano de Tráfego Pago
+      ## 4. Cronograma de Impacto (Plano de Ação de 30 dias)
+      ## 5. Roteiro de Narração Profissional (Para locução)
       
-      No final, adicione uma se├º├úo "ASSETS_PROMPTS" com prompts para CADA formato solicitado.
+      No final, adicione uma seção "ASSETS_PROMPTS" com prompts para CADA formato solicitado.
       
-      REGRAS PARA CARROSS├ëIS:
-      - Se um carrossel foi solicitado, voc├¬ deve gerar EXATAMENTE ${slidesCarrossel} prompts sequenciais.
-      - A sequ├¬ncia deve seguir: Slide 1 (Gancho/Hook), Slides 2 a ${slidesCarrossel - 1} (Conte├║do de Valor/Storytelling), Slide ${slidesCarrossel} (CTA de Elite).
-      - Cada slide do carrossel deve ser identificado EXATAMENTE como: [ASSET: Nome do Carrossel - Slide X (Indique a Propor├º├úo 1:1 ou 9:16 aqui) | PROMPT: ...]
+      REGRAS PARA CARROSSÉIS:
+      - Se um carrossel foi solicitado, você deve gerar EXATAMENTE ${slidesCarrossel} prompts sequenciais.
+      - A sequência deve seguir: Slide 1 (Gancho/Hook), Slides 2 a ${slidesCarrossel - 1} (Conteúdo de Valor/Storytelling), Slide ${slidesCarrossel} (CTA de Elite).
+      - Cada slide do carrossel deve ser identificado EXATAMENTE como: [ASSET: Nome do Carrossel - Slide X (Indique a Proporção 1:1 ou 9:16 aqui) | PROMPT: ...]
       
       REGRAS PARA OUTROS FORMATOS:
-      - [ASSET: Nome do Formato (Indique a Propor├º├úo 1:1 ou 9:16 ou 16:9 aqui) | PROMPT: O prompt detalhado aqui descrevendo o visual focado na marca e no produto (descreva em ingl├¬s para melhor qualidade visual, mas especifique que qualquer texto na imagem deve ser em PORTUGU├èS DO BRASIL. N├âO inclua elementos visuais do Brasil como pa├¡s/clima/cen├írio, foque no ambiente do neg├│cio)].
+      - [ASSET: Nome do Formato (Indique a Proporção 1:1 ou 9:16 ou 16:9 aqui) | PROMPT: O prompt detalhado aqui descrevendo o visual focado na marca e no produto (descreva em inglês para melhor qualidade visual, mas especifique que qualquer texto na imagem deve ser em PORTUGUÊS DO BRASIL. NÃO inclua elementos visuais do Brasil como país/clima/cenário, foque no ambiente do negócio)].
       
-      Tamb├®m gere 1 roteiro t├®cnico cinematogr├ífico e detalhado para v├¡deo publicit├írio de exatos 10 segundos (ritmo elegante e fluido):
+      Também gere 1 roteiro técnico cinematográfico e detalhado para vídeo publicitário de exatos 10 segundos (ritmo elegante e fluido):
       [VIDEO_PROMPT: ...]
 
-      E gere o texto exato para a narra├º├úo profissional (deve ser lido em cerca de 8 a 10 segundos, foque totalmente na L├ìNGUA e dic├º├úo brasileira):
-      [NARRATION_SCRIPT: O roteiro de ├íudio exclusivamente em Portugu├¬s do Brasil aqui, flu├¡do, impactante e com ortografia correta]
+      E gere o texto exato para a narração profissional (deve ser lido em cerca de 8 a 10 segundos, foque totalmente na LÍNGUA e dicção brasileira):
+      [NARRATION_SCRIPT: O roteiro de áudio exclusivamente em Português do Brasil aqui, fluído, impactante e com ortografia correta]
 
       DIRETRIZES PARA OS PROMPTS VISUAIS:
-      - Devem ser IMAGENS PUBLICIT├üRIAS reais, com elementos de design, CTAs impl├¡citos na composi├º├úo e t├®cnicas de produ├º├úo de m├¡dia.
-      - IMPORTANTE: Qualquer texto vis├¡vel (placas, telas, letreiros, bot├Áes) DEVE estar em PORTUGU├èS DO BRASIL correto e leg├¡vel. Verifique a ortografia das palavras propostas no prompt.
-      - Descreva ilumina├º├úo cinematogr├ífica, movimentos de c├ómera e alta fidelidade (8k, photorealistic).
-      - IMPORTANTE: Para o formato "Feed (Instagram/LinkedIn) - 1:1", o prompt deve focar em uma composi├º├úo quadrada.
-      - IMPORTANTE: Para o formato "Stories/Reels/TikTok - 9:16", o prompt deve focar em uma composi├º├úo vertical.`;
+      - Devem ser IMAGENS PUBLICITÁRIAS reais, com elementos de design, CTAs implícitos na composição e técnicas de produção de mídia.
+      - IMPORTANTE: Qualquer texto visível (placas, telas, letreiros, botões) DEVE estar em PORTUGUÊS DO BRASIL correto e legível. Verifique a ortografia das palavras propostas no prompt.
+      - Descreva iluminação cinematográfica, movimentos de câmera e alta fidelidade (8k, photorealistic).
+      - IMPORTANTE: Para o formato "Feed (Instagram/LinkedIn) - 1:1", o prompt deve focar em uma composição quadrada.
+      - IMPORTANTE: Para o formato "Stories/Reels/TikTok - 9:16", o prompt deve focar em uma composição vertical.`;
 
       // 1. Generate Strategy Text
       const textResponse = await fetch('/api/ai/generate-text', {
@@ -293,7 +293,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: prompt,
-          systemInstruction: "Voc├¬ ├® o Diretor de Cria├º├úo da MASTER FUNNEL. Sua miss├úo ├® entregar estrat├®gias de marketing de elite, com portugu├¬s impec├ível (PT-BR), sem erros ortogr├íficos, e tom extremamente profissional e persuasivo."
+          systemInstruction: "Você é o Diretor de Criação da MASTER FUNNEL. Sua missão é entregar estratégias de marketing de elite, com português impecável (PT-BR), sem erros ortográficos, e tom extremamente profissional e persuasivo."
         })
       });
 
@@ -398,11 +398,11 @@ export default function App() {
       console.error("DEBUG: Detailed Generation Error:", err);
       // More specific error handling
       if (err.status === 404) {
-        setError(`Modelo n├úo encontrado (${textModel}). Por favor, verifique se o modelo est├í liberado para sua regi├úo.`);
+        setError(`Modelo não encontrado (${textModel}). Por favor, verifique se o modelo está liberado para sua região.`);
       } else if (err.status === 403) {
-        setError("Chave de API inv├ílida ou sem permiss├úo para este modelo.");
+        setError("Chave de API inválida ou sem permissão para este modelo.");
       } else {
-        setError(err.message || "Erro na gera├º├úo. Verifique sua chave de API ou tente novamente.");
+        setError(err.message || "Erro na geração. Verifique sua chave de API ou tente novamente.");
       }
     } finally {
       setLoading(false);
@@ -420,7 +420,7 @@ export default function App() {
     }
 
     setVideoLoading(true);
-    setStatus('Gerando v├¡deo cinematogr├ífico (Veo 3.1)...');
+    setStatus('Gerando vídeo cinematográfico (Veo 3.1)...');
 
     try {
       const resp = await fetch('/api/ai/generate-video', {
@@ -431,7 +431,7 @@ export default function App() {
         })
       });
 
-      if (!resp.ok) throw new Error(`Falha ao iniciar v├¡deo (${resp.status})`);
+      if (!resp.ok) throw new Error(`Falha ao iniciar vídeo (${resp.status})`);
       const { operationName } = await resp.json();
 
       let done = false;
@@ -444,7 +444,7 @@ export default function App() {
         if (statusData.done) {
           done = true;
           if (statusData.videoUri) videoUrl = statusData.videoUri;
-          else if (statusData.error) throw new Error(statusData.error.message || 'Falha no v├¡deo');
+          else if (statusData.error) throw new Error(statusData.error.message || 'Falha no vídeo');
         }
       }
 
@@ -454,9 +454,9 @@ export default function App() {
     } catch (err: any) {
       console.error("Video Generation Error:", err);
       if (err.message?.includes("Requested entity was not found")) {
-        setError("Sua chave de API pode n├úo ter acesso ao Veo ou o modelo n├úo foi encontrado. Verifique as permiss├Áes.");
+        setError("Sua chave de API pode não ter acesso ao Veo ou o modelo não foi encontrado. Verifique as permissões.");
       } else {
-        setError(`Falha ao gerar v├¡deo: ${err.message || 'Erro desconhecido'}`);
+        setError(`Falha ao gerar vídeo: ${err.message || 'Erro desconhecido'}`);
       }
     } finally {
       setVideoLoading(false);
@@ -468,7 +468,7 @@ export default function App() {
     if (!result?.narrationScript) return;
 
     setAudioLoading(true);
-    setStatus('Gerando narra├º├úo profissional em PT-BR...');
+    setStatus('Gerando narração profissional em PT-BR...');
 
     try {
       const ai = getAI();
@@ -490,11 +490,11 @@ export default function App() {
       if (base64Audio) {
         setGeneratedAudio(`data:audio/wav;base64,${base64Audio}`);
       } else {
-        throw new Error("O modelo n├úo retornou dados de ├íudio.");
+        throw new Error("O modelo não retornou dados de áudio.");
       }
     } catch (err: any) {
       console.error("Audio Generation Error:", err);
-      setError(`Falha ao gerar narra├º├úo: ${err.message || 'Erro desconhecido'}`);
+      setError(`Falha ao gerar narração: ${err.message || 'Erro desconhecido'}`);
     } finally {
       setAudioLoading(false);
       setStatus('');
@@ -517,7 +517,7 @@ export default function App() {
     if (!element) return;
 
     setLoading(true);
-    setStatus('Gerando PDF de alta defini├º├úo...');
+    setStatus('Gerando PDF de alta definição...');
 
     try {
       const canvas = await html2canvas(element, {
@@ -576,7 +576,7 @@ export default function App() {
 
   const loadFromHistory = async (id: number) => {
     setLoading(true);
-    setStatus('Recuperando estrat├®gia do arquivo...');
+    setStatus('Recuperando estratégia do arquivo...');
     try {
       const res = await fetch(`/api/strategies/${id}`);
       if (res.ok) {
@@ -592,7 +592,7 @@ export default function App() {
 
         setResult({
           text: strategy.reportText,
-          assets: [], // As imagens n├úo s├úo salvas (muito grandes), o usu├írio deve re-gerar se necess├írio
+          assets: [], // As imagens não são salvas (muito grandes), o usuário deve re-gerar se necessário
           videoPrompt: strategy.videoPrompt,
           narrationScript: strategy.narrationScript
         });
@@ -602,7 +602,7 @@ export default function App() {
         setShowAdmin(false);
       }
     } catch (err) {
-      alert("Erro ao carregar do hist├│rico");
+      alert("Erro ao carregar do histórico");
     } finally {
       setLoading(false);
       setStatus('');
@@ -611,12 +611,12 @@ export default function App() {
 
   const deleteFromHistory = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
-    if (!confirm("Excluir esta estrat├®gia do hist├│rico?")) return;
+    if (!confirm("Excluir esta estratégia do histórico?")) return;
     try {
       const res = await fetch(`/api/strategies/${id}`, { method: 'DELETE' });
       if (res.ok) fetchHistory();
     } catch (err) {
-      alert("Erro ao excluir do hist├│rico");
+      alert("Erro ao excluir do histórico");
     }
   };
 
@@ -665,7 +665,7 @@ export default function App() {
                 value={loginData.password}
                 onChange={e => setLoginData({ ...loginData, password: e.target.value })}
                 className="w-full bg-white/5 border-b border-white/10 py-3 focus:border-[#f58f2a] outline-none transition-all"
-                placeholder="ÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇó"
+                placeholder="••••••••"
               />
             </div>
 
@@ -736,7 +736,7 @@ export default function App() {
           <button
             onClick={() => { setResult(null); setShowAdmin(false); }}
             className={cn("p-3 rounded-xl transition-all", !result && !showAdmin ? "bg-[#f58f2a] text-white" : "hover:bg-white/5 text-white/40")}
-            title="Nova Estrat├®gia"
+            title="Nova Estratégia"
           >
             <Monitor size={20} />
           </button>
@@ -750,14 +750,14 @@ export default function App() {
           <button
             onClick={() => { setShowHistory(true); setShowAdmin(false); fetchHistory(); }}
             className={cn("p-3 rounded-xl transition-all", showHistory ? "bg-[#f58f2a] text-white" : "hover:bg-white/5 text-white/40")}
-            title="Hist├│rico de Estrat├®gias"
+            title="Histórico de Estratégias"
           >
             <History size={20} />
           </button>
           <button
             onClick={() => { setShowAdmin(true); fetchLogs(); }}
             className={cn("p-3 rounded-xl transition-all", showAdmin ? "bg-[#f58f2a] text-white" : "hover:bg-white/5 text-white/40")}
-            title="Administra├º├úo"
+            title="Administração"
           >
             <Sparkles size={20} />
           </button>
@@ -800,7 +800,7 @@ export default function App() {
               }}
               className="hidden sm:flex items-center gap-2 px-4 py-2 bg-[#f58f2a] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-[#f15424] transition-all shadow-lg shadow-orange-500/20"
             >
-              <RefreshCw size={14} /> Nova Estrat├®gia
+              <RefreshCw size={14} /> Nova Estratégia
             </button>
           )}
           <div className="hidden lg:flex flex-col items-end mr-4">
@@ -840,7 +840,7 @@ export default function App() {
             className="space-y-8"
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-3xl font-serif italic">Hist├│rico de Estrat├®gias</h2>
+              <h2 className="text-3xl font-serif italic">Histórico de Estratégias</h2>
               <button
                 onClick={fetchHistory}
                 disabled={historyLoading}
@@ -872,7 +872,7 @@ export default function App() {
                         <Target size={20} />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-[10px] uppercase tracking-widest font-bold text-white/40">Neg├│cio</span>
+                        <span className="text-[10px] uppercase tracking-widest font-bold text-white/40">Negócio</span>
                         <span className="font-bold text-sm line-clamp-1">{item.negocio}</span>
                       </div>
                     </div>
@@ -897,7 +897,7 @@ export default function App() {
                   <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto text-white/10">
                     <History size={32} />
                   </div>
-                  <p className="text-white/20 uppercase tracking-[0.2em] font-bold text-xs">Nenhuma estrat├®gia salva ainda.</p>
+                  <p className="text-white/20 uppercase tracking-[0.2em] font-bold text-xs">Nenhuma estratégia salva ainda.</p>
                 </div>
               )}
             </div>
@@ -910,7 +910,7 @@ export default function App() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-8">
-                <h2 className="text-3xl font-serif italic">Administra├º├úo</h2>
+                <h2 className="text-3xl font-serif italic">Administração</h2>
                 <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
                   <button
                     onClick={() => setAdminTab('logs')}
@@ -931,7 +931,7 @@ export default function App() {
                       adminTab === 'users' ? "bg-[#f58f2a] text-white" : "text-white/40 hover:text-white"
                     )}
                   >
-                    Gerenciar Usu├írios
+                    Gerenciar Usuários
                   </button>
                 </div>
               </div>
@@ -949,9 +949,9 @@ export default function App() {
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-white/5 bg-white/5">
-                        <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Usu├írio</th>
-                        <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">A├º├úo</th>
-                        <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Par├ómetros</th>
+                        <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Usuário</th>
+                        <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Ação</th>
+                        <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Parâmetros</th>
                         <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Data/Hora</th>
                       </tr>
                     </thead>
@@ -971,7 +971,7 @@ export default function App() {
                           </td>
                           <td className="p-6">
                             <div className="text-[10px] text-white/60 space-y-1">
-                              <p><strong className="text-white/80">Neg├│cio:</strong> {log.params.negocio}</p>
+                              <p><strong className="text-white/80">Negócio:</strong> {log.params.negocio}</p>
                               <p><strong className="text-white/80">Ideia:</strong> {log.params.ideia?.substring(0, 50)}...</p>
                             </div>
                           </td>
@@ -988,7 +988,7 @@ export default function App() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-1">
                   <form onSubmit={handleAddUser} className="bg-[#0c2444] p-8 rounded-[32px] border border-white/5 space-y-6">
-                    <h3 className="text-xl font-serif italic">Novo Usu├írio</h3>
+                    <h3 className="text-xl font-serif italic">Novo Usuário</h3>
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <label className="text-[10px] uppercase tracking-widest font-bold text-white/40">Nome Completo</label>
@@ -1027,7 +1027,7 @@ export default function App() {
                           onChange={e => setNewUser({ ...newUser, role: e.target.value })}
                           className="w-full bg-white/5 border-b border-white/10 py-2 focus:border-[#f58f2a] outline-none transition-all text-sm"
                         >
-                          <option value="user" className="bg-[#0c2444]">Usu├írio Padr├úo</option>
+                          <option value="user" className="bg-[#0c2444]">Usuário Padrão</option>
                           <option value="admin" className="bg-[#0c2444]">Administrador</option>
                         </select>
                       </div>
@@ -1036,7 +1036,7 @@ export default function App() {
                       type="submit"
                       className="w-full py-3 bg-[#f58f2a] text-white rounded-xl font-bold uppercase tracking-widest text-[10px] hover:bg-[#f15424] transition-all"
                     >
-                      Cadastrar Usu├írio
+                      Cadastrar Usuário
                     </button>
                   </form>
                 </div>
@@ -1046,9 +1046,9 @@ export default function App() {
                     <table className="w-full text-left">
                       <thead>
                         <tr className="border-b border-white/5 bg-white/5">
-                          <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Usu├írio</th>
-                          <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">N├¡vel</th>
-                          <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40 text-right">A├º├Áes</th>
+                          <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Usuário</th>
+                          <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40">Nível</th>
+                          <th className="p-6 text-[10px] uppercase tracking-widest font-bold text-white/40 text-right">Ações</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
@@ -1096,12 +1096,12 @@ export default function App() {
                   <Sparkles size={48} />
                 </div>
 
-                <h2 className="text-2xl font-serif italic mb-8">Nova Estrat├®gia</h2>
+                <h2 className="text-2xl font-serif italic mb-8">Nova Estratégia</h2>
 
                 <div className="space-y-8">
                   <div className="space-y-3">
                     <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/40 flex items-center gap-2">
-                      <Target size={14} className="text-[#f58f2a]" /> Nome do Neg├│cio
+                      <Target size={14} className="text-[#f58f2a]" /> Nome do Negócio
                     </label>
                     <input
                       type="text"
@@ -1134,9 +1134,9 @@ export default function App() {
                         <p className="text-[10px] font-bold text-[#f58f2a] uppercase tracking-widest mb-2">Guia de Estilos</p>
                         <ul className="space-y-2 text-[11px] leading-relaxed text-white/70">
                           <li><strong className="text-white">Profissional:</strong> Credibilidade e sobriedade para o mercado corporativo.</li>
-                          <li><strong className="text-white">Brutalista:</strong> Design cru, disruptivo e art├¡stico para marcas modernas.</li>
-                          <li><strong className="text-white">Minimalista:</strong> Foco total na ideia com sofistica├º├úo e clareza.</li>
-                          <li><strong className="text-white">Energ├®tico:</strong> Cores vibrantes e movimento para capturar aten├º├úo r├ípida.</li>
+                          <li><strong className="text-white">Brutalista:</strong> Design cru, disruptivo e artístico para marcas modernas.</li>
+                          <li><strong className="text-white">Minimalista:</strong> Foco total na ideia com sofisticação e clareza.</li>
+                          <li><strong className="text-white">Energético:</strong> Cores vibrantes e movimento para capturar atenção rápida.</li>
                         </ul>
                       </div>
                       <select
@@ -1147,12 +1147,12 @@ export default function App() {
                         <option className="bg-[#0c2444]">Profissional</option>
                         <option className="bg-[#0c2444]">Brutalista</option>
                         <option className="bg-[#0c2444]">Minimalista</option>
-                        <option className="bg-[#0c2444]">Energ├®tico</option>
+                        <option className="bg-[#0c2444]">Energético</option>
                       </select>
                     </div>
                     <div className="space-y-3">
                       <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/40 flex items-center gap-2">
-                        <Target size={14} className="text-[#f58f2a]" /> P├║blico
+                        <Target size={14} className="text-[#f58f2a]" /> Público
                       </label>
                       <input
                         type="text"
@@ -1284,7 +1284,7 @@ export default function App() {
                     </div>
                     <h3 className="text-3xl font-serif italic mb-4">Aguardando Comando</h3>
                     <p className="text-white/30 max-w-md leading-relaxed">
-                      Insira os par├ómetros da sua campanha para que nossa IA arquitete um funil de vendas completo com visuais cinematogr├íficos.
+                      Insira os parâmetros da sua campanha para que nossa IA arquitete um funil de vendas completo com visuais cinematográficos.
                     </p>
                   </motion.div>
                 )}
@@ -1304,7 +1304,7 @@ export default function App() {
                     </div>
                     <div className="text-center space-y-3">
                       <p className="font-bold uppercase tracking-[0.3em] text-xs text-[#f58f2a]">{status}</p>
-                      <p className="text-[10px] text-white/20 uppercase tracking-widest">Otimizando convers├úo via IA...</p>
+                      <p className="text-[10px] text-white/20 uppercase tracking-widest">Otimizando conversão via IA...</p>
                     </div>
                   </motion.div>
                 )}
@@ -1349,9 +1349,9 @@ export default function App() {
                           <div className="flex-1 space-y-4">
                             <div className="flex items-center gap-3 text-[#f58f2a]">
                               <Video size={20} />
-                              <span className="text-xs font-bold uppercase tracking-widest">Asset Cinematogr├ífico</span>
+                              <span className="text-xs font-bold uppercase tracking-widest">Asset Cinematográfico</span>
                             </div>
-                            <h3 className="text-3xl font-serif italic">Preview em V├¡deo</h3>
+                            <h3 className="text-3xl font-serif italic">Preview em Vídeo</h3>
                             <p className="text-sm text-white/60 leading-relaxed italic">
                               "{result.videoPrompt}"
                             </p>
@@ -1362,7 +1362,7 @@ export default function App() {
                                 className="px-8 py-4 bg-white text-[#0c2444] rounded-2xl font-bold uppercase tracking-widest text-[10px] hover:bg-[#f58f2a] hover:text-white transition-all flex items-center gap-3"
                               >
                                 {videoLoading ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />}
-                                {videoLoading ? 'Processando V├¡deo...' : 'Gerar V├¡deo (Veo 3.1)'}
+                                {videoLoading ? 'Processando Vídeo...' : 'Gerar Vídeo (Veo 3.1)'}
                               </button>
                             ) : (
                               <div className="flex gap-4">
@@ -1383,7 +1383,7 @@ export default function App() {
                                 <div className={cn("w-12 h-12 rounded-full border-2 border-white/10 flex items-center justify-center mx-auto", videoLoading && "animate-pulse")}>
                                   <Video className="text-white/20" size={20} />
                                 </div>
-                                <p className="text-[10px] uppercase tracking-widest text-white/20">Aguardando Gera├º├úo</p>
+                                <p className="text-[10px] uppercase tracking-widest text-white/20">Aguardando Geração</p>
                               </div>
                             )}
                           </div>
@@ -1427,7 +1427,7 @@ export default function App() {
                             onClick={exportToPDF}
                             className="px-8 py-4 border border-black/10 rounded-2xl text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white transition-all flex items-center gap-3"
                           >
-                            <Download size={16} /> Exportar Estrat├®gia
+                            <Download size={16} /> Exportar Estratégia
                           </button>
                         </div>
                       </div>
