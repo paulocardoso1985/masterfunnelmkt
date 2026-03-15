@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Modality } from "@google/genai";
+
 import Markdown from 'react-markdown';
 import {
   Rocket,
@@ -465,41 +465,6 @@ export default function App() {
       }
     } finally {
       setVideoLoading(false);
-      setStatus('');
-    }
-  };
-
-  const generateAudio = async () => {
-    if (!result?.narrationScript) return;
-
-    setAudioLoading(true);
-    setStatus('Gerando narração profissional em PT-BR...');
-
-    try {
-      const audioResponse = await fetch('/api/ai/generate-audio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: result.narrationScript })
-      });
-
-      if (!audioResponse.ok) {
-        const errData = await audioResponse.json().catch(() => ({}));
-        throw new Error(`Erro TTS: ${errData.error || audioResponse.status}`);
-      }
-
-      const audioData = await audioResponse.json();
-      const base64Audio = audioData.audio;
-
-      if (base64Audio) {
-        setGeneratedAudio(`data:audio/wav;base64,${base64Audio}`);
-      } else {
-        throw new Error("O modelo não retornou dados de áudio.");
-      }
-    } catch (err: any) {
-      console.error("Audio Generation Error:", err);
-      setError(`Falha ao gerar narração: ${err.message || 'Erro desconhecido'}`);
-    } finally {
-      setAudioLoading(false);
       setStatus('');
     }
   };

@@ -175,28 +175,6 @@ async function startServer() {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
-  app.post("/api/ai/generate-audio", authenticate, async (req, res) => {
-    const { text } = req.body;
-    try {
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: text,
-        config: {
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Aoede' },
-            },
-          },
-        },
-      });
-
-      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (!base64Audio) throw new Error("O modelo não retornou áudio.");
-      res.json({ audio: base64Audio });
-    } catch (err: any) { res.status(500).json({ error: err.message }); }
-  });
-
   app.get("/api/ai/operation-status/*", authenticate, async (req, res) => {
     try {
       const operationName = req.params[0];
