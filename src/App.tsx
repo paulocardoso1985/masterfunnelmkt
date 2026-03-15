@@ -1,10 +1,10 @@
-﻿/**
+/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import React, { useState, useEffect } from 'react';
-import { GoogleGenAI, Modality } from "@google/genai";
+import { Modality } from "@google/genai";
 import Markdown from 'react-markdown';
 import {
   Rocket,
@@ -202,11 +202,7 @@ export default function App() {
     }
   };
 
-  // Helper to get AI instance
-  const getAI = () => {
-    const key = (process.env as any).API_KEY || process.env.GEMINI_API_KEY || '';
-    return new GoogleGenAI({ apiKey: key });
-  };
+
 
   const generateStrategy = async () => {
     const { negocio, ideia, publico, estilo, formatos, slidesCarrossel } = formData;
@@ -234,7 +230,7 @@ export default function App() {
         })
       });
 
-      const ai = getAI();
+
 
       const aspectRatioMap: Record<string, "1:1" | "9:16" | "16:9"> = {
         'Feed (Instagram/LinkedIn) - 1:1': '1:1',
@@ -297,7 +293,10 @@ export default function App() {
         })
       });
 
-      if (!textResponse.ok) throw new Error(`Falha no texto (${textResponse.status})`);
+      if (!textResponse.ok) {
+        const errData = await textResponse.json().catch(() => ({}));
+        throw new Error(errData.error || `Falha no texto (${textResponse.status})`);
+      }
       const textData = await textResponse.json();
       const fullText = textData.text || '';
 
@@ -346,7 +345,10 @@ export default function App() {
             })
           });
 
-          if (!res.ok) throw new Error(`Imagem falhou (${res.status})`);
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(`Imagem falhou (${res.status}): ${errData.error || ''}`);
+          }
           const data = await res.json();
           if (data.data) {
             generatedAssets.push({
@@ -431,7 +433,10 @@ export default function App() {
         })
       });
 
-      if (!resp.ok) throw new Error(`Falha ao iniciar vídeo (${resp.status})`);
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(`Erro API Vídeo: ${errData.error || resp.status}`);
+      }
       const { operationName } = await resp.json();
 
       let done = false;
@@ -471,21 +476,19 @@ export default function App() {
     setStatus('Gerando narração profissional em PT-BR...');
 
     try {
-      const ai = getAI();
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: result.narrationScript }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Aoede' },
-            },
-          },
-        },
+      const audioResponse = await fetch('/api/ai/generate-audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: result.narrationScript })
       });
 
-      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (!audioResponse.ok) {
+        const errData = await audioResponse.json().catch(() => ({}));
+        throw new Error(`Erro TTS: ${errData.error || audioResponse.status}`);
+      }
+
+      const audioData = await audioResponse.json();
+      const base64Audio = audioData.audio;
 
       if (base64Audio) {
         setGeneratedAudio(`data:audio/wav;base64,${base64Audio}`);
