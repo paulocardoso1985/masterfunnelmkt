@@ -298,42 +298,34 @@ export default function App() {
         throw new Error(errData.error || `Falha no texto (${textResponse.status})`);
       }
       const textData = await textResponse.json();
-      const fullText = textData.text || '';
+      const rawText = textData.text || '';
+      
+      // Cleanup typical LLM markdown blocks if present before JSON parsing
+      const jsonStart = rawText.indexOf('{');
+      const jsonEnd = rawText.lastIndexOf('}');
+      if (jsonStart === -1 || jsonEnd === -1) {
+        throw new Error("O assistente não retornou um formato JSON válido.");
+      }
+      
+      const jsonString = rawText.substring(jsonStart, jsonEnd + 1);
+      const parsedData = JSON.parse(jsonString);
 
-      // 2. Extract Prompts
-      setStatus('Extraindo prompts e gerando visuais...');
-      // More robust regex to catch assets even with slight formatting variations
-      const assetRegex = /\[ASSET:\s*(.*?)\s*\|?\s*PROMPT:\s*(.*?)\]/gs;
-      const assetMatches = [...fullText.matchAll(assetRegex)];
-
-      const videoMatch = fullText.match(/\[VIDEO_PROMPT: (.*?)\]/);
-      const videoPrompt = videoMatch ? videoMatch[1] : `Cinematic high-end commercial for ${negocio}, 4k, slow motion, professional lighting`;
-
-      const narrationMatch = fullText.match(/\[NARRATION_SCRIPT: (.*?)\]/s);
-      const narrationScript = narrationMatch ? narrationMatch[1] : '';
+      const fullText = parsedData.estrategia_texto || '';
+      const imagesToGenerate = parsedData.imagens_para_gerar || [];
+      const videoPrompt = parsedData.video_prompt || `Cinematic high-end commercial for ${negocio}, 4k, slow motion, professional lighting`;
+      const narrationScript = parsedData.narration_script || '';
 
       // 3. Generate Images (Sequential to avoid 429 Resource Exhausted)
       const imageModel = "gemini-2.5-flash-image";
       const generatedAssets = [];
 
-      for (let i = 0; i < assetMatches.length; i++) {
-        const match = assetMatches[i];
-        const fullLabel = match[1];
-        const p = match[2];
+      for (let i = 0; i < imagesToGenerate.length; i++) {
+        const imgObj = imagesToGenerate[i];
+        const fullLabel = `${imgObj.tipo} - ${imgObj.tamanho_aspecto}`;
+        const p = imgObj.prompt_visual;
+        const ratio = imgObj.tamanho_aspecto === '9:16' ? '9:16' : (imgObj.tamanho_aspecto === '1:1' ? '1:1' : '16:9');
 
-        setStatus(`Gerando asset ${i + 1} de ${assetMatches.length}: ${fullLabel}...`);
-
-        // Determine base type for aspect ratio
-        let baseType = fullLabel;
-        if (fullLabel.includes(' - Slide')) {
-          baseType = fullLabel.split(' - Slide')[0];
-        }
-
-        let ratio: "1:1" | "9:16" | "16:9" = '16:9';
-        if (fullLabel.includes('1:1')) ratio = '1:1';
-        else if (fullLabel.includes('9:16')) ratio = '9:16';
-        else if (fullLabel.includes('16:9')) ratio = '16:9';
-        else ratio = aspectRatioMap[baseType] || '16:9';
+        setStatus(`Gerando asset ${i + 1} de ${imagesToGenerate.length}: ${fullLabel}...`);
 
         try {
           const res = await fetch('/api/ai/generate-image', {
@@ -353,24 +345,23 @@ export default function App() {
           if (data.data) {
             generatedAssets.push({
               url: `data:image/png;base64,${data.data}`,
-              tipo: baseType,
+              tipo: imgObj.tipo,
               label: fullLabel,
-              aspectRatio: ratio
+              aspectRatio: ratio,
+              copy: imgObj.copy_sobreposta || ""
             });
           }
 
-          // Small delay between requests to prevent rate limit confusion
-          if (i < assetMatches.length - 1) {
+          if (i < imagesToGenerate.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 800));
           }
         } catch (imgErr) {
           console.error(`Failed to generate asset: ${fullLabel}`, imgErr);
         }
       }
-      const cleanText = fullText.split('ASSETS_PROMPTS')[0].trim();
 
       setResult({
-        text: cleanText,
+        text: fullText,
         assets: generatedAssets,
         videoPrompt: videoPrompt,
         narrationScript: narrationScript
@@ -388,7 +379,7 @@ export default function App() {
             publico,
             estilo,
             formatos,
-            reportText: cleanText,
+            reportText: fullText,
             videoPrompt,
             narrationScript
           })
