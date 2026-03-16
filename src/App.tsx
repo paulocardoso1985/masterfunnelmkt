@@ -218,7 +218,7 @@ export default function App() {
     setGeneratedVideo(null);
     setGeneratedAudio(null);
     setStatus('Arquitetando narrativa de elite...');
-    const textModel = "gemini-2.0-flash";
+    const textModel = "gemini-2.5-pro";
     try {
       // Log usage
       fetch('/api/log-usage', {

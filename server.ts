@@ -141,13 +141,43 @@ async function startServer() {
   app.post("/api/ai/generate-text", authenticate, async (req, res) => {
     const { prompt, systemInstruction } = req.body;
     try {
-      const response = await ai.models.generateContent({
-        model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
-        contents: prompt,
-        config: { systemInstruction: systemInstruction || "Diretor MASTER FUNIL" }
-      });
-      res.json({ text: response.text });
-    } catch (err: any) { res.status(500).json({ error: err.message }); }
+      // Tenta os modelos em ordem de preferência (Loop de Fallback)
+      const preferredModels = [
+        process.env.GEMINI_MODEL, // 1º - Variável do Railway (se existir)
+        "gemini-2.5-pro",         // 2º - Novo padrão (mais inteligente)
+        "gemini-2.5-flash",       // 3º - Rápido e moderno
+        "gemini-2.0-flash-001",   // 4º - Fallback seguro
+        "gemini-flash-latest"     // 5º - Último recurso que aponta para o atual
+      ].filter(Boolean) as string[];
+
+      let textResponse = null;
+      let lastError;
+
+      for (const model of preferredModels) {
+        try {
+          const response = await ai.models.generateContent({
+            model: model,
+            contents: prompt,
+            config: { systemInstruction: systemInstruction || "Diretor MASTER FUNIL" }
+          });
+          textResponse = response.text;
+          console.log(`[API] Sucesso na geração de texto usando o modelo: ${model}`);
+          break; // Deu certo, sai do loop imediatamente!
+        } catch (e: any) {
+          console.warn(`[API] Falha ao tentar usar o modelo ${model}: ${e.message}`);
+          lastError = e; // Salva o erro caso seja o último modelo e todos falhem
+        }
+      }
+
+      if (textResponse) {
+        res.json({ text: textResponse });
+      } else {
+        throw lastError || new Error("Nenhum modelo disponível funcionou na sua chave da API.");
+      }
+    } catch (err: any) { 
+      console.error("[API] Erro Crítico na Rota de Texto:", err.message);
+      res.status(500).json({ error: err.message }); 
+    }
   });
 
   app.post("/api/ai/generate-image", authenticate, async (req, res) => {
