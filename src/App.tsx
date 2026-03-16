@@ -34,6 +34,8 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { Player } from '@remotion/player';
+import { CampanhaComposition } from './remotion/CampanhaComposition';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -61,6 +63,7 @@ interface GeneratedAsset {
   tipo: string;
   aspectRatio: "1:1" | "9:16" | "16:9";
   label?: string;
+  copy?: string;
 }
 
 interface GeneratedContent {
@@ -1302,7 +1305,7 @@ export default function App() {
                         </div>
                       ))}
 
-                      {/* Video Asset Section */}
+                      {/* Video Asset Section (Remotion Player) */}
                       <div className="md:col-span-2 bg-[#0c2444] rounded-[40px] p-10 border border-white/5 relative overflow-hidden">
                         <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
                           <div className="flex-1 space-y-4">
@@ -1314,35 +1317,36 @@ export default function App() {
                             <p className="text-sm text-white/60 leading-relaxed italic">
                               "{result.videoPrompt}"
                             </p>
-                            {!generatedVideo ? (
+                            <div className="flex gap-4">
                               <button
-                                onClick={generateVideoAsset}
-                                disabled={videoLoading}
-                                className="px-8 py-4 bg-white text-[#0c2444] rounded-2xl font-bold uppercase tracking-widest text-[10px] hover:bg-[#f58f2a] hover:text-white transition-all flex items-center gap-3"
+                                disabled={true}
+                                className="px-6 py-3 bg-white/10 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all opacity-50 cursor-not-allowed"
+                                title="Download MP4 do Remotion disponível na próxima atualização (Bundler Backend)"
                               >
-                                {videoLoading ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />}
-                                {videoLoading ? 'Processando Vídeo...' : 'Gerar Vídeo (Veo 3.1)'}
+                                <Download size={14} /> Download MP4 (Em Breve)
                               </button>
-                            ) : (
-                              <div className="flex gap-4">
-                                <button
-                                  onClick={downloadVideo}
-                                  className="px-6 py-3 bg-white/10 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-white/20 transition-all"
-                                >
-                                  <Download size={14} /> Download MP4
-                                </button>
-                              </div>
-                            )}
+                            </div>
                           </div>
-                          <div className="w-full md:w-[400px] aspect-video bg-black/40 rounded-3xl border border-white/10 flex items-center justify-center overflow-hidden">
-                            {generatedVideo ? (
-                              <video src={generatedVideo} controls className="w-full h-full object-cover" />
+                          <div className="w-full md:w-[320px] aspect-[9/16] bg-black/40 rounded-3xl border border-white/10 flex items-center justify-center overflow-hidden">
+                            {result.assets.length > 0 ? (
+                              <Player
+                                component={CampanhaComposition}
+                                inputProps={{ assets: result.assets.map(a => ({ ...a, url: a.url, tipo: a.tipo, aspectRatio: a.aspectRatio as string, copy: a.copy || "" })) }}
+                                durationInFrames={Math.max(120, result.assets.length * 120)}
+                                fps={30}
+                                compositionWidth={1080}
+                                compositionHeight={1920}
+                                style={{ width: '100%', height: '100%' }}
+                                controls
+                                loop
+                                autoPlay
+                              />
                             ) : (
                               <div className="text-center space-y-4">
-                                <div className={cn("w-12 h-12 rounded-full border-2 border-white/10 flex items-center justify-center mx-auto", videoLoading && "animate-pulse")}>
+                                <div className="w-12 h-12 rounded-full border-2 border-white/10 flex items-center justify-center mx-auto">
                                   <Video className="text-white/20" size={20} />
                                 </div>
-                                <p className="text-[10px] uppercase tracking-widest text-white/20">Aguardando Geração</p>
+                                <p className="text-[10px] uppercase tracking-widest text-white/20">Aguardando Assets</p>
                               </div>
                             )}
                           </div>
