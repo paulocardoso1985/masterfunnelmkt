@@ -158,7 +158,9 @@ async function startServer() {
           const response = await ai.models.generateContent({
             model: model,
             contents: prompt,
-            config: { systemInstruction: systemInstruction || "Diretor MASTER FUNIL" }
+            config: { 
+              systemInstruction: systemInstruction || "Diretor MASTER FUNIL"
+            }
           });
           textResponse = response.text;
           console.log(`[API] Sucesso na geração de texto usando o modelo: ${model}`);

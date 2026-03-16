@@ -269,8 +269,6 @@ export default function App() {
       - Se um carrossel foi solicitado, você deve gerar EXATAMENTE ${slidesCarrossel} prompts sequenciais.
       - A sequência deve seguir: Slide 1 (Gancho/Hook), Slides 2 a ${slidesCarrossel - 1} (Conteúdo de Valor/Storytelling), Slide ${slidesCarrossel} (CTA de Elite).
       - Cada slide do carrossel deve ser identificado EXATAMENTE como: [ASSET: Nome do Carrossel - Slide X (Indique a Proporção 1:1 ou 9:16 aqui) | PROMPT: ...]
-      
-      REGRAS PARA OUTROS FORMATOS:
       - [ASSET: Nome do Formato (Indique a Proporção 1:1 ou 9:16 ou 16:9 aqui) | PROMPT: O prompt detalhado aqui descrevendo o visual focado na marca e no produto (descreva em inglês para melhor qualidade visual, mas especifique que qualquer texto na imagem deve ser em PORTUGUÊS DO BRASIL. NÃO inclua elementos visuais do Brasil como país/clima/cenário, foque no ambiente do negócio)].
       
       Também gere 1 roteiro técnico cinematográfico e detalhado para vídeo publicitário de exatos 10 segundos (ritmo elegante e fluido):
@@ -302,21 +300,32 @@ export default function App() {
       }
       const textData = await textResponse.json();
       const rawText = textData.text || '';
+      console.log("DEBUG: Raw AI Response:", rawText);
       
-      // Cleanup typical LLM markdown blocks if present before JSON parsing
-      const jsonStart = rawText.indexOf('{');
-      const jsonEnd = rawText.lastIndexOf('}');
-      if (jsonStart === -1 || jsonEnd === -1) {
-        throw new Error("O assistente não retornou um formato JSON válido.");
-      }
-      
-      const jsonString = rawText.substring(jsonStart, jsonEnd + 1);
-      const parsedData = JSON.parse(jsonString);
+      let fullText = '';
+      let imagesToGenerate = [];
+      let videoPrompt = `Cinematic commercial for ${negocio}`;
+      let narrationScript = '';
 
-      const fullText = parsedData.estrategia_texto || '';
-      const imagesToGenerate = parsedData.imagens_para_gerar || [];
-      const videoPrompt = parsedData.video_prompt || `Cinematic high-end commercial for ${negocio}, 4k, slow motion, professional lighting`;
-      const narrationScript = parsedData.narration_script || '';
+      try {
+        // Find the JSON block
+        const jsonStart = rawText.indexOf('{');
+        const jsonEnd = rawText.lastIndexOf('}');
+        
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+          const jsonString = rawText.substring(jsonStart, jsonEnd + 1);
+          const parsed = JSON.parse(jsonString);
+          fullText = parsed.estrategia_texto || '';
+          imagesToGenerate = parsed.imagens_para_gerar || [];
+          videoPrompt = parsed.video_prompt || videoPrompt;
+          narrationScript = parsed.narration_script || '';
+        } else {
+          throw new Error("No JSON markers found");
+        }
+      } catch (parseErr) {
+        console.warn("JSON Parse failed, falling back to raw text display", parseErr);
+        fullText = rawText; // Defuse the error by showing what we have
+      }
 
       // 3. Generate Images (Sequential to avoid 429 Resource Exhausted)
       const imageModel = "gemini-2.5-flash-image";
