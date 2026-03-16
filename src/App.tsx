@@ -291,7 +291,7 @@ export default function App() {
       const textData = await textResponse.json();
       const rawText = textData.text || '';
       console.log("DEBUG: Raw AI Response:", rawText);
-      
+
       let fullText = '';
       let imagesToGenerate = [];
       let videoPrompt = `Cinematic commercial for ${negocio}`;
@@ -301,7 +301,7 @@ export default function App() {
         // Find the JSON block
         const jsonStart = rawText.indexOf('{');
         const jsonEnd = rawText.lastIndexOf('}');
-        
+
         if (jsonStart !== -1 && jsonEnd !== -1) {
           const jsonString = rawText.substring(jsonStart, jsonEnd + 1);
           const parsed = JSON.parse(jsonString);
@@ -315,15 +315,15 @@ export default function App() {
         // Robust fallback: see if we can at least find the Strategy text by header
         const strategyHeader = "# Estratégia Master";
         if (rawText.includes(strategyHeader)) {
-           fullText = rawText.substring(rawText.indexOf(strategyHeader));
+          fullText = rawText.substring(rawText.indexOf(strategyHeader));
         } else {
-           fullText = rawText; 
+          fullText = rawText;
         }
       }
 
       console.log(`DEBUG: Found ${imagesToGenerate.length} images to generate.`);
       if (imagesToGenerate.length === 0 && !rawText.includes('{')) {
-         console.warn("DEBUG: No JSON structure found in AI response. Image generation skipped.");
+        console.warn("DEBUG: No JSON structure found in AI response. Image generation skipped.");
       }
 
       // 3. Generate Images (Sequential to avoid 429 Resource Exhausted)
@@ -414,57 +414,44 @@ export default function App() {
   };
 
   const generateVideoAsset = async () => {
-    if (!result?.videoPrompt) return;
-
-    // Optional: Check for AI Studio API key if in that environment
-    const hasAiStudio = typeof window !== 'undefined' && (window as any).aistudio;
-    if (hasAiStudio && !(await (window as any).aistudio.hasSelectedApiKey())) {
-      await (window as any).aistudio.openSelectKey();
-      return;
-    }
+    if (!result?.assets || result.assets.length === 0) return;
 
     setVideoLoading(true);
-    setStatus('Gerando vídeo cinematográfico (Veo 3.1)...');
+    setStatus('Processando renderização de vídeo MP4 (isso pode demorar mais de 1 minuto dependendo do tamanho)...');
 
     try {
-      const resp = await fetch('/api/ai/generate-video', {
+      const resp = await fetch('/api/render-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: result.videoPrompt
+          assets: result.assets.map(a => ({
+            url: a.url,
+            tipo: a.tipo,
+            aspectRatio: a.aspectRatio,
+            copy: a.copy || ""
+          }))
         })
       });
 
       if (!resp.ok) {
         const errData = await resp.json().catch(() => ({}));
-        throw new Error(`Erro API Vídeo: ${errData.error || resp.status}`);
-      }
-      const { operationName } = await resp.json();
-
-      let done = false;
-      let videoUrl = '';
-      while (!done) {
-        await new Promise(r => setTimeout(r, 5000));
-        const statusResp = await fetch(`/api/ai/operation-status/${operationName}`);
-        if (!statusResp.ok) continue;
-        const statusData = await statusResp.json();
-        if (statusData.done) {
-          done = true;
-          if (statusData.videoUri) videoUrl = statusData.videoUri;
-          else if (statusData.error) throw new Error(statusData.error.message || 'Falha no vídeo');
-        }
+        throw new Error(errData.error || `Erro ${resp.status}`);
       }
 
-      if (videoUrl) {
-        setGeneratedVideo(`/api/ai/video-proxy?url=${encodeURIComponent(videoUrl)}`);
-      }
+      const { url } = await resp.json();
+      setGeneratedVideo(url);
+
+      // Auto-download helper
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `campanha-${formData.negocio.toLowerCase().replace(/\s+/g, '-')}.mp4`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
     } catch (err: any) {
-      console.error("Video Generation Error:", err);
-      if (err.message?.includes("Requested entity was not found")) {
-        setError("Sua chave de API pode não ter acesso ao Veo ou o modelo não foi encontrado. Verifique as permissões.");
-      } else {
-        setError(`Falha ao gerar vídeo: ${err.message || 'Erro desconhecido'}`);
-      }
+      console.error("Video Render Error:", err);
+      setError(`Falha ao renderizar vídeo: ${err.message || 'Erro desconhecido'}`);
     } finally {
       setVideoLoading(false);
       setStatus('');
@@ -1327,12 +1314,26 @@ export default function App() {
                             </p>
                             <div className="flex gap-4">
                               <button
-                                disabled={true}
-                                className="px-6 py-3 bg-white/10 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all opacity-50 cursor-not-allowed"
-                                title="Download MP4 do Remotion disponível na próxima atualização (Bundler Backend)"
+                                onClick={generateVideoAsset}
+                                disabled={videoLoading || result.assets.length === 0}
+                                className={cn(
+                                  "px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all",
+                                  videoLoading ? "bg-white/5 text-white/50 cursor-not-allowed" : "bg-[#f58f2a] text-white hover:bg-[#f15424] shadow-lg shadow-orange-500/20"
+                                )}
+                                title="Renderizar vídeo em alta definição como MP4"
                               >
-                                <Download size={14} /> Download MP4 (Em Breve)
+                                {videoLoading ? <Loader2 className="animate-spin" size={14} /> : <Download size={14} />}
+                                {videoLoading ? 'Renderizando MP4...' : 'Renderizar & Baixar MP4'}
                               </button>
+                              {generatedVideo && (
+                                <button
+                                  onClick={downloadVideo}
+                                  className="px-6 py-3 bg-green-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg hover:bg-green-600 focus:scale-95"
+                                  title="Baixar MP4 novamente"
+                                >
+                                  <CheckCircle2 size={14} /> Baixar
+                                </button>
+                              )}
                             </div>
                           </div>
                           <div className="w-full md:w-[320px] aspect-[9/16] bg-black/40 rounded-3xl border border-white/10 flex items-center justify-center overflow-hidden">

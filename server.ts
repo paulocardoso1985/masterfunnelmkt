@@ -10,6 +10,8 @@ import fs from "fs";
 import os from "os";
 import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
+import { bundle } from "@remotion/bundler";
+import { renderMedia, selectComposition } from "@remotion/renderer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -232,6 +234,50 @@ async function startServer() {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
   */
+
+  let cachedBundleLocation: string | null = null;
+
+  app.post("/api/render-video", authenticate, async (req, res) => {
+    try {
+      const { assets } = req.body;
+      if (!assets || assets.length === 0) {
+        return res.status(400).json({ error: "No assets provided" });
+      }
+
+      if (!cachedBundleLocation) {
+        cachedBundleLocation = await bundle({
+          entryPoint: path.resolve(__dirname, 'src/remotion/index.ts'),
+          webpackOverride: (config) => config,
+        });
+      }
+
+      const composition = await selectComposition({
+        serveUrl: cachedBundleLocation,
+        id: "CampanhaVideo",
+        inputProps: { assets }
+      });
+
+      const fileName = `video-${Date.now()}.mp4`;
+      const rendersDir = path.join(__dirname, 'public', 'renders');
+      if (!fs.existsSync(rendersDir)) {
+        fs.mkdirSync(rendersDir, { recursive: true });
+      }
+      const outputFile = path.join(rendersDir, fileName);
+
+      await renderMedia({
+        composition,
+        serveUrl: cachedBundleLocation,
+        codec: "h264",
+        outputLocation: outputFile,
+        inputProps: { assets }
+      });
+
+      res.json({ url: `/renders/${fileName}` });
+    } catch (err: any) {
+      console.error("[API] Error rendering video:", err);
+      res.status(500).json({ error: err.message || "Unknown rendering error" });
+    }
+  });
 
   app.get("/api/ai/video-proxy", authenticate, async (req, res) => {
     try {
