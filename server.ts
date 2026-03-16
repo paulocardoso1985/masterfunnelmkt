@@ -158,10 +158,9 @@ async function startServer() {
     try {
       // Tenta os modelos em ordem de preferência (Loop de Fallback)
       const preferredModels = [
-        process.env.GEMINI_MODEL, 
-        "gemini-2.0-flash",       
-        "gemini-1.5-pro",         
-        "gemini-1.5-flash"
+        process.env.GEMINI_MODEL,
+        "gemini-2.5-flash",
+        "gemini-2.0-flash"
       ].filter(Boolean) as string[];
 
       let textResponse = null;
@@ -172,7 +171,7 @@ async function startServer() {
           const response = await ai.models.generateContent({
             model: model,
             contents: prompt,
-            config: { 
+            config: {
               systemInstruction: systemInstruction || "Diretor MASTER FUNIL"
             }
           });
@@ -190,9 +189,9 @@ async function startServer() {
       } else {
         throw lastError || new Error("Nenhum modelo disponível funcionou na sua chave da API.");
       }
-    } catch (err: any) { 
+    } catch (err: any) {
       console.error("[API] Erro Crítico na Rota de Texto:", err.message);
-      res.status(500).json({ error: err.message }); 
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -200,7 +199,7 @@ async function startServer() {
     const { prompt, aspectRatio } = req.body;
     try {
       const response = await ai.models.generateImages({
-        model: "imagen-3.0-generate-001", 
+        model: "imagen-4.0-generate-001",
         prompt: `${prompt}. Cinematic, professional marketing material.`,
         config: {
           aspectRatio: aspectRatio || "1:1",

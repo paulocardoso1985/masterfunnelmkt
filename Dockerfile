@@ -62,10 +62,7 @@ RUN mkdir -p data
 
 # Forçar ambiente de produção
 ENV NODE_ENV=production
-ENV PORT=3000
 
-# Porta que o servidor vai expor
-EXPOSE 3000
 
 # Comando para iniciar o servidor
 CMD ["npm", "start"]
