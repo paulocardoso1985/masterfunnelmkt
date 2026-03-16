@@ -244,45 +244,35 @@ export default function App() {
       };
 
       // 1. Generate Strategy Text & Video Prompts
-      const prompt = `Aja como o Diretor de Criação e Estratégia de Elite da MASTER FUNNEL MARKETING MAIS CORPORATIVO. 
-      Crie um ecossistema de marketing digital de alta performance para "${negocio}".
+      const prompt = `
+      Campanha: ${negocio} (${ideia}). Público: ${publico}. Estilo: ${estilo}. Formatos: ${formatos.join(', ')}.
       
-      ${formatos.some(f => f.includes('Carrossel')) ? `- Slides por Carrossel: ${slidesCarrossel}` : ''}
-
-      REQUISITOS OBRIGATÍRIOS DE QUALIDADE:
-      1. IDIOMA E LÍNGUA: Todo o áudio, narração, diálogos e textos (inclusive textos em imagens/vídeos) devem ser exclusivamente em PORTUGUÊS DO BRASIL (PT-BR) com ortografia impecável.
-      2. CONTEXTO VISUAL NEUTRO: Os prompts visuais (Imagem e Vídeo) devem focar na MARCA e no PRODUTO. NÃO inclua elementos geográficos brasileiros (bandeiras, mapas, pontos turísticos) a menos que o negócio seja explicitamente sobre o Brasil. Queremos a LÍNGUA brasileira no áudio, não necessariamente o Brasil como cenário visual.
-      3. REVISÃO RIGOROSA: Erros de português (acentuação, concordância) são proibidos.
-      4. O tom deve ser extremamente profissional, persuasivo e focado em resultados de elite.
-
-      O relatório deve ser em Markdown e incluir:
-      # ­ƒÄ» Estratégia Master: ${negocio}
-      ## 1. Posicionamento de Elite e Proposta de Valor
-      ## 2. Arquitetura do Funil de Conversão (Topo, Meio e Fundo de Funil)
-      ## 3. Mix de Canais Estratégicos & Plano de Tráfego Pago
-      ## 4. Cronograma de Impacto (Plano de Ação de 30 dias)
-      ## 5. Roteiro de Narração Profissional (Para locução)
+      MANDATÓRIO: RESPONDA APENAS UM JSON PURO.
+      ESTRUTURA:
+      {
+        "estrategia_texto": "# Estratégia Master... (Markdown formatado aqui)",
+        "imagens_para_gerar": [
+          { 
+            "tipo": "Post/Story/Banner", 
+            "tamanho_aspecto": "1:1 ou 9:16 ou 16:9", 
+            "prompt_visual": "Detailed cinematic prompt in English. MANDATORY: Centralize all key elements. Brazilian Portuguese text only.",
+            "copy_sobreposta": "Texto curto"
+          }
+        ],
+        "video_prompt": "Cinematic prompt in English for a 10s video",
+        "narration_script": "Roteiro PT-BR impactante"
+      }
       
-      No final, adicione uma seção "ASSETS_PROMPTS" com prompts para CADA formato solicitado.
-      
-      REGRAS PARA CARROSSÉIS:
-      - Se um carrossel foi solicitado, você deve gerar EXATAMENTE ${slidesCarrossel} prompts sequenciais.
-      - A sequência deve seguir: Slide 1 (Gancho/Hook), Slides 2 a ${slidesCarrossel - 1} (Conteúdo de Valor/Storytelling), Slide ${slidesCarrossel} (CTA de Elite).
-      - Cada slide do carrossel deve ser identificado EXATAMENTE como: [ASSET: Nome do Carrossel - Slide X (Indique a Proporção 1:1 ou 9:16 aqui) | PROMPT: ...]
-      - [ASSET: Nome do Formato (Indique a Proporção 1:1 ou 9:16 ou 16:9 aqui) | PROMPT: O prompt detalhado aqui descrevendo o visual focado na marca e no produto (descreva em inglês para melhor qualidade visual, mas especifique que qualquer texto na imagem deve ser em PORTUGUÊS DO BRASIL. NÃO inclua elementos visuais do Brasil como país/clima/cenário, foque no ambiente do negócio)].
-      
-      Também gere 1 roteiro técnico cinematográfico e detalhado para vídeo publicitário de exatos 10 segundos (ritmo elegante e fluido):
-      [VIDEO_PROMPT: ...]
-
-      E gere o texto exato para a narração profissional (deve ser lido em cerca de 8 a 10 segundos, foque totalmente na LÍNGUA e dicção brasileira):
-      [NARRATION_SCRIPT: O roteiro de áudio exclusivamente em Português do Brasil aqui, fluído, impactante e com ortografia correta]
-
-      DIRETRIZES PARA OS PROMPTS VISUAIS:
-      - Devem ser IMAGENS PUBLICITÁRIAS reais, com elementos de design, CTAs implícitos na composição e técnicas de produção de mídia.
-      - IMPORTANTE: Qualquer texto visível (placas, telas, letreiros, botões) DEVE estar em PORTUGUÊS DO BRASIL correto e legível. Verifique a ortografia das palavras propostas no prompt.
-      - Descreva iluminação cinematográfica, movimentos de câmera e alta fidelidade (8k, photorealistic).
-      - IMPORTANTE: Para o formato "Feed (Instagram/LinkedIn) - 1:1", o prompt deve focar em uma composição quadrada.
-      - IMPORTANTE: Para o formato "Stories/Reels/TikTok - 9:16", o prompt deve focar em uma composição vertical.`;
+      INSTRUÇÕES DE ASSETS:
+      - Gere assets para TODOS os formatos: ${formatos.join(', ')}.
+      - Se tiver Carrossel, gere ${slidesCarrossel} slides na lista "imagens_para_gerar".
+      - Prompts de imagem em INGLÊS. Textos nas imagens em PORTUGUÊS (PT-BR).
+      - IDIOMA E LÍNGUA: Todo o áudio, narração, diálogos e textos (inclusive textos em imagens/vídeos) devem ser exclusivamente em PORTUGUÊS DO BRASIL (PT-BR) com ortografia impecável.
+      - CONTEXTO VISUAL NEUTRO: Os prompts visuais (Imagem e Vídeo) devem focar na MARCA e no PRODUTO. NÃO inclua elementos geográficos brasileiros (bandeiras, mapas, pontos turísticos) a menos que o negócio seja explicitamente sobre o Brasil. Queremos a LÍGUA brasileira no áudio, não necessariamente o Brasil como cenário visual.
+      - REVISÃO RIGOROSA: Erros de português (acentuação, concordância) são proibidos.
+      - O tom deve ser extremamente profissional, persuasivo e focado em resultados de elite.
+      - Para o formato "Feed (Instagram/LinkedIn) - 1:1", o prompt deve focar em uma composição quadrada.
+      - Para o formato "Stories/Reels/TikTok - 9:16", o prompt deve focar em uma composição vertical.`;
 
       // 1. Generate Strategy Text
       const textResponse = await fetch('/api/ai/generate-text', {
