@@ -127,9 +127,24 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  app.get("/api/strategies", authenticate, (req: any, res) => {
+  app.get("/api/strategies", authenticate, (req: any, res: any) => {
     const list = req.user.role === "admin" ? db.prepare("SELECT * FROM strategies ORDER BY timestamp DESC").all() : db.prepare("SELECT * FROM strategies WHERE userId = ? ORDER BY timestamp DESC").all(req.user.id);
     res.json({ strategies: list.map((s: any) => ({ ...s, formatos: JSON.parse(s.formatos || "[]") })) });
+  });
+
+  app.get("/api/strategies/:id", authenticate, (req: any, res: any) => {
+    const strategy = db.prepare("SELECT * FROM strategies WHERE id = ?").get(req.params.id);
+    if (!strategy) return res.status(404).json({ error: "Não encontrado" });
+    if (req.user.role !== "admin" && strategy.userId !== req.user.id) return res.status(403).json({ error: "Acesso negado" });
+    res.json({ strategy: { ...strategy, formatos: JSON.parse(strategy.formatos || "[]") } });
+  });
+
+  app.delete("/api/strategies/:id", authenticate, (req: any, res: any) => {
+    const strategy = db.prepare("SELECT * FROM strategies WHERE id = ?").get(req.params.id);
+    if (!strategy) return res.status(404).json({ error: "Não encontrado" });
+    if (req.user.role !== "admin" && strategy.userId !== req.user.id) return res.status(403).json({ error: "Acesso negado" });
+    db.prepare("DELETE FROM strategies WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
   });
 
   app.post("/api/strategies", authenticate, (req: any, res) => {
@@ -143,11 +158,10 @@ async function startServer() {
     try {
       // Tenta os modelos em ordem de preferência (Loop de Fallback)
       const preferredModels = [
-        process.env.GEMINI_MODEL, // 1º - Variável do Railway (se existir)
-        "gemini-2.5-pro",         // 2º - Novo padrão (mais inteligente)
-        "gemini-2.5-flash",       // 3º - Rápido e moderno
-        "gemini-2.0-flash-001",   // 4º - Fallback seguro
-        "gemini-flash-latest"     // 5º - Último recurso que aponta para o atual
+        process.env.GEMINI_MODEL, 
+        "gemini-2.0-flash",       
+        "gemini-1.5-pro",         
+        "gemini-1.5-flash"
       ].filter(Boolean) as string[];
 
       let textResponse = null;
@@ -186,8 +200,8 @@ async function startServer() {
     const { prompt, aspectRatio } = req.body;
     try {
       const response = await ai.models.generateImages({
-        model: "imagen-3.0-generate-001",
-        prompt: `${prompt}. MANDATORY: High quality, cinematic.`,
+        model: "imagen-3.0-generate-001", 
+        prompt: `${prompt}. Cinematic, professional marketing material.`,
         config: {
           aspectRatio: aspectRatio || "1:1",
           numberOfImages: 1,

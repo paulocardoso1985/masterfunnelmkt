@@ -309,12 +309,21 @@ export default function App() {
           imagesToGenerate = parsed.imagens_para_gerar || [];
           videoPrompt = parsed.video_prompt || videoPrompt;
           narrationScript = parsed.narration_script || '';
-        } else {
-          throw new Error("No JSON markers found");
         }
       } catch (parseErr) {
         console.warn("JSON Parse failed, falling back to raw text display", parseErr);
-        fullText = rawText; // Defuse the error by showing what we have
+        // Robust fallback: see if we can at least find the Strategy text by header
+        const strategyHeader = "# Estratégia Master";
+        if (rawText.includes(strategyHeader)) {
+           fullText = rawText.substring(rawText.indexOf(strategyHeader));
+        } else {
+           fullText = rawText; 
+        }
+      }
+
+      console.log(`DEBUG: Found ${imagesToGenerate.length} images to generate.`);
+      if (imagesToGenerate.length === 0 && !rawText.includes('{')) {
+         console.warn("DEBUG: No JSON structure found in AI response. Image generation skipped.");
       }
 
       // 3. Generate Images (Sequential to avoid 429 Resource Exhausted)
