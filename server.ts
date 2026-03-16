@@ -16,7 +16,9 @@ const __dirname = path.dirname(__filename);
 
 // --- 🔐 THE BULLETPROOF AUTH FIX ---
 // Initialize Standard Gemini API client
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY || process.env.GOOGLE_API_KEY;
+if (!apiKey) console.warn("⚠️ AVISO: Variável de API do Gemini não encontrada no painel. O SDK pode falhar tentando usar ADC.");
+const ai = new GoogleGenAI(apiKey ? { apiKey } : {});
 
 const dataDir = path.join(__dirname, "data");
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
@@ -41,7 +43,7 @@ if (!db.prepare("SELECT id FROM users WHERE email = ?").get(adminEmail)) {
   );
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || "master-funnel-secret-2026";
+const JWT_SECRET = process.env.JWT_SECRET || "master_funnel_mkt";
 const PORT = Number(process.env.PORT) || 3000;
 
 async function startServer() {
@@ -179,12 +181,12 @@ async function startServer() {
     try {
       const operationName = req.params[0];
       const operation: any = await (ai.operations as any).get({ name: operationName });
-      
+
       let videoUri = null;
       if (operation.done && operation.response?.generatedVideos?.[0]?.video?.uri) {
         videoUri = operation.response.generatedVideos[0].video.uri;
       }
-      
+
       res.json({
         done: !!operation.done,
         videoUri: videoUri,
