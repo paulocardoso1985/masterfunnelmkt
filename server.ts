@@ -196,6 +196,9 @@ async function startServer() {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
+  // --- VÍDEO (VEO 3) - DESATIVADO CONFORME SOLICITAÇÃO ---
+  // A geração de vídeos agora é feita externamente (ex: Remotion) usando os prompts gerados pela IA.
+  /*
   app.post("/api/ai/generate-video", authenticate, async (req, res) => {
     const { prompt } = req.body;
     try {
@@ -207,23 +210,13 @@ async function startServer() {
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
 
-  app.get("/api/ai/operation-status/*", authenticate, async (req, res) => {
+  app.get("/api/ai/operation-status/:name", authenticate, async (req, res) => {
     try {
-      const operationName = req.params[0];
-      const operation: any = await (ai.operations as any).get({ name: operationName });
-
-      let videoUri = null;
-      if (operation.done && operation.response?.generatedVideos?.[0]?.video?.uri) {
-        videoUri = operation.response.generatedVideos[0].video.uri;
-      }
-
-      res.json({
-        done: !!operation.done,
-        videoUri: videoUri,
-        error: operation.error
-      });
+      const operation = await ai.operations.get({ name: req.params.name });
+      res.json(operation);
     } catch (err: any) { res.status(500).json({ error: err.message }); }
   });
+  */
 
   app.get("/api/ai/video-proxy", authenticate, async (req, res) => {
     try {
